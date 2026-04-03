@@ -7,29 +7,64 @@ namespace kagen {
 PGeneratorConfig
 Grid2DFactory::NormalizeParameters(PGeneratorConfig config, PEID, const PEID size, const bool output) const {
     EnsureSquarePowerOfTwoChunkSize(config, size, output);
-    if (config.grid_x == 0 && config.grid_y == 0) {
-        if (config.n == 0) {
-            throw ConfigurationError("either (x, y) or n must be nonzero");
-        } else {
-            const SInt sqrt_n = std::sqrt(config.n);
-            config.grid_x     = sqrt_n;
-            config.grid_y     = sqrt_n;
-        }
+    if ((config.grid_x == 0 || config.grid_y == 0) && config.n == 0) { 
+        throw ConfigurationError("Grid dimension 0 not allowed.");
+    } else if (config.grid_x == 0 && config.grid_y == 0 && config.n != 0) {
+        const SInt sqrt_n = std::sqrt(config.n);
+        const bool is_perfect_square = (sqrt_n * sqrt_n == config.n);
+        if (!is_perfect_square && output) {
+            std::cerr << "Warning: n = " << config.n << " is not a perfect square; using grid " << sqrt_n << " x " << sqrt_n << " (" << sqrt_n * sqrt_n << " vertices)\n";
+        } 
+        config.grid_x     = sqrt_n;
+        config.grid_y     = sqrt_n;
+    } else if (config.n == 0 && config.grid_x > 0 && config.grid_y > 0) {
+       config.n = config.grid_x * config.grid_y;
+    } else {
+        if (config.n != config.grid_x * config.grid_y) {
+            throw ConfigurationError("Dimensions do not fit number of vertices.");
+        }        
     }
     if (config.p == 0) {
         if (config.m == 0) {
-            throw ConfigurationError("if p is not given, m must be nonzero");
+            throw ConfigurationError("if p is not given, m must be nonzero.");
+        } 
+        
+        if (config.grid_x == 1 && config.grid_y == 1) {
+            throw ConfigurationError("p is not given, and the resulting graph would have zero edges.");
         }
 
-        const SInt num_deg2_vertices = config.periodic ? 0 : 4;
-        const SInt num_deg3_vertices = config.periodic ? 0 : 2 * config.grid_x + 2 * config.grid_y - 4;
-        const SInt num_deg4_vertices = config.grid_x * config.grid_y - num_deg2_vertices - num_deg3_vertices;
+        // directed
+        SInt max_directed_edges = 0;
+        
+        auto axis_neighbors = [](const SInt L) -> SInt {
+            if (L <= 1) return 0;
+            if (L == 2) return 1;
+            return 2;
+        };
+        
+        if (config.periodic) {
+            const SInt deg = axis_neighbors(config.grid_x) + axis_neighbors(config.grid_y);
+            max_directed_edges = deg * config.grid_x * config.grid_y;
+        } else {
+            if (config.grid_x == 1 || config.grid_y == 1) {
+                    max_directed_edges = (config.grid_x == 1) ? 2 * (config.grid_y - 1) : 2 * (config.grid_x - 1);
+            } else {
+                const SInt num_deg2_vertices = 4;
+                const SInt num_deg3_vertices = 2 * config.grid_x + 2 * config.grid_y - 8;
+                const SInt num_deg4_vertices = config.grid_x * config.grid_y - num_deg2_vertices - num_deg3_vertices;
+                max_directed_edges = (4 * num_deg4_vertices + 3 * num_deg3_vertices + 2 * num_deg2_vertices);
+            }
+        }
 
-        config.p = 2.0 * config.m / (4 * num_deg4_vertices + 3 * num_deg3_vertices + 2 * num_deg2_vertices);
+        if (max_directed_edges % 2 != 0) throw std::logic_error("Sum of degrees (directed edges) must be even.");
+
+        if (max_directed_edges == 0) throw ConfigurationError("If p is not given, the maximum number of possible edges must be non-zero.");
+
+        config.p = 2.0 * config.m / max_directed_edges;
         if (output) {
             std::cout << "Setting edge probability to " << config.p << std::endl;
             if (config.p > 1) {
-                std::cerr << "Warning: configuration infeasible, too many edges\n";
+                throw ConfigurationError("Configuration infeasible, too many edges");
             }
         }
     }

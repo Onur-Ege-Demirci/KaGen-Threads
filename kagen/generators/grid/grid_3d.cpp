@@ -11,25 +11,85 @@ Grid3DFactory::Create(const PGeneratorConfig& config, const PEID rank, const PEI
 PGeneratorConfig
 Grid3DFactory::NormalizeParameters(PGeneratorConfig config, PEID, const PEID size, const bool output) const {
     EnsureCubicPowerOfTwoChunkSize(config, size, output);
+    if (config.grid_x == 0 || config.grid_y == 0 || config.grid_z == 0) {
+        throw ConfigurationError("Grid dimension zero not allowed.");
+    } 
 
+    if (config.n == 0) {
+        config.n = config.grid_x * config.grid_y * config.grid_z;
+    } else {
+        if (config.n != config.grid_x * config.grid_y * config.grid_z) {
+            throw ConfigurationError("Number of vertices does not match the dimensions of the grid.");
+        }
+    }
+    
     if (config.p == 0) {
-        if (config.grid_x == 0 || config.grid_y == 0 || config.grid_z == 0 || config.m == 0) {
-            throw ConfigurationError("at least two parameters out of {(x, y, z), m, p} must be nonzero");
+        if (config.m == 0) {
+            throw ConfigurationError("If p is not given, m must be nonzero");
+        } 
+
+        if (config.grid_x == 1 && config.grid_y == 1 && config.grid_z == 1) {
+            throw ConfigurationError("p is not given, and the resulting graph would have zero edges.");
         }
 
-        const SInt num_deg4_vertices = config.periodic ? 0 : 4 * config.grid_x + 4 * config.grid_y + 4 * config.grid_z;
-        const SInt num_deg5_vertices = config.periodic ? 0
-                                                       : 2 * (config.grid_x - 1) * (config.grid_y - 1)
-                                                             + 2 * (config.grid_y - 1) * (config.grid_z - 1)
-                                                             + 2 * (config.grid_x - 1) * (config.grid_z - 1);
-        const SInt num_deg6_vertices =
-            config.grid_x * config.grid_y * config.grid_z - num_deg4_vertices - num_deg5_vertices;
+        // directed
+        SInt max_directed_edges = 0;
+        
+        auto axis_neighbors = [](const SInt L) -> SInt {
+            if (L <= 1) return 0;
+            if (L == 2) return 1;
+            return 2; 
+        };
+        if (config.periodic) {
+            const SInt deg = axis_neighbors(config.grid_x) + axis_neighbors(config.grid_y) + axis_neighbors(config.grid_z);           
+            max_directed_edges = deg * config.n;
+        } else {
+            auto two_dim_grid_directed_edges = [](const SInt dim_x, const SInt dim_y) -> SInt {
+                const SInt deg2_vertices = 4;
+                const SInt deg3_vertices = 2 * dim_x + 2 * dim_y - 8;
+                const SInt deg4_vertices = dim_x * dim_y - deg2_vertices - deg3_vertices;
+                return (4 * deg4_vertices + 3 * deg3_vertices + 2 * deg2_vertices);
+            };
 
-        config.p = 2.0 * config.m / (6 * num_deg6_vertices + 5 * num_deg5_vertices + 4 * num_deg4_vertices);
+            const int dims_gt1 = (config.grid_x > 1) + (config.grid_y > 1) + (config.grid_z > 1);
+
+            // case dims_gt1 == 0 already handled
+            if (dims_gt1 == 1) { 
+                max_directed_edges = 2 * (std::max({config.grid_x, config.grid_y, config.grid_z}) - 1);
+            } else if (dims_gt1 == 2) {
+                const SInt dim_x = (config.grid_x > 1) ? config.grid_x : config.grid_y;
+                const SInt dim_y = (config.grid_x > 1) ? ((config.grid_y > 1) ? config.grid_y : config.grid_z) : config.grid_z;
+                max_directed_edges = two_dim_grid_directed_edges(dim_x, dim_y);
+            } else if (dims_gt1 == 3) {
+                // First, we have vertices of degree 3. Those are the corner vertices, and we have overall 8 of them.
+                const SInt num_deg3_vertices = 8;
+
+                // Now, we count the vertices of degree 4. These are the vertices on the edges, excluding the corners.
+                const SInt num_deg4_vertices = 4 * (config.grid_x + config.grid_y + config.grid_z) - 8 * 3;        
+                // Next, we count the vertices of degree 5. These are the vertices on the faces, excluding the edges. 
+                // Two compute them per side we can use the same formula as for the degree 4 vertices in a 2d-grid.
+                const SInt num_deg5_vertices = 2 * ((config.grid_x * config.grid_y) - (2 * config.grid_x + 2 * config.grid_y - 8) - 4) 
+                                            + 2 * ((config.grid_x * config.grid_z) - (2 * config.grid_x + 2 * config.grid_z - 8) - 4)
+                                            + 2 * ((config.grid_y * config.grid_z) - (2 * config.grid_y + 2 * config.grid_z - 8) - 4);
+
+                // Lastly, we count the vertices of degree 6 
+                const SInt num_deg6_vertices = (config.grid_x * config.grid_y * config.grid_z) - num_deg3_vertices - num_deg4_vertices - num_deg5_vertices;
+
+                max_directed_edges = 6 * num_deg6_vertices + 5 * num_deg5_vertices + 4 * num_deg4_vertices + 3 * num_deg3_vertices;              
+            } else {
+                throw ConfigurationError("Invalid grid dimensionality.");
+            }
+        }
+
+        if (max_directed_edges % 2 != 0) throw std::logic_error("Sum of degrees (directed edges) must be even.");
+
+        if (max_directed_edges == 0) throw ConfigurationError("If p is not given, the maximum number of possible edges must be non-zero.");
+
+        config.p = (2.0 * config.m) / max_directed_edges;
         if (output) {
             std::cout << "Setting edge probability to " << config.p << std::endl;
             if (config.p > 1) {
-                std::cerr << "Warning: configuration infeasible, too many edges\n";
+                throw  ConfigurationError("Configuration infeasible, too many edges");
             }
         }
     }
