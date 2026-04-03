@@ -25,15 +25,15 @@ inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, MPI_Comm comm)
     return n + 1;
 }
 
-inline PEID GetCommRank(MPI_Comm comm) {
+inline PEID GetCommRank(KAGEN_Comm comm) {
     PEID rank;
-    MPI_Comm_rank(comm, &rank);
+    comm.world_rank(&rank);
     return rank;
 }
 
-inline PEID GetCommSize(MPI_Comm comm) {
+inline PEID GetCommSize(KAGEN_Comm comm) {
     PEID size;
-    MPI_Comm_size(comm, &size);
+    comm.world_size(&size);
     return size;
 }
 

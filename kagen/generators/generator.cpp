@@ -14,6 +14,8 @@
 #include "kagen/vertexweight_generators/vertex_weight_generator.h"
 #include "kagen/vertexweight_generators/voiding_generator.h"
 
+
+#include "kagen/kagen_communicator.h"
 #include <mpi.h>
 
 #include <algorithm>
@@ -43,7 +45,7 @@ Generator* Generator::Generate(const GraphRepresentation representation) {
     return this;
 }
 
-Generator* Generator::Finalize(MPI_Comm comm) {
+Generator* Generator::Finalize(KAGEN_Comm comm) {
     switch (desired_representation_) {
         case GraphRepresentation::EDGE_LIST:
             FinalizeEdgeList(comm);
@@ -340,7 +342,7 @@ void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config,
 }
 
 std::unique_ptr<kagen::VertexWeightGenerator>
-CreateVertexWeightGenerator(const VertexWeightConfig weight_config, MPI_Comm comm) {
+CreateVertexWeightGenerator(const VertexWeightConfig weight_config, KAGEN_Comm comm) {
     switch (weight_config.generator_type) {
         case VertexWeightGeneratorType::DEFAULT:
             return std::make_unique<DefaultVertexWeightGenerator>(weight_config);
@@ -353,7 +355,7 @@ CreateVertexWeightGenerator(const VertexWeightConfig weight_config, MPI_Comm com
     throw std::runtime_error("invalid weight generator type");
 }
 
-void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, MPI_Comm comm) {
+void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, KAGEN_Comm comm) {
     std::unique_ptr<kagen::VertexWeightGenerator> vertex_weight_generator =
         CreateVertexWeightGenerator(weight_config, comm);
 
@@ -368,15 +370,15 @@ void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, MPI_Comm
     }
 }
 
-void Generator::FinalizeEdgeList(MPI_Comm) {}
+void Generator::FinalizeEdgeList(KAGEN_Comm) {}
 
-void Generator::FinalizeCSR(MPI_Comm) {}
+void Generator::FinalizeCSR(KAGEN_Comm) {}
 
 void CSROnlyGenerator::GenerateEdgeList() {
     GenerateCSR();
 }
 
-void CSROnlyGenerator::FinalizeEdgeList(MPI_Comm comm) {
+void CSROnlyGenerator::FinalizeEdgeList(KAGEN_Comm comm) {
     if (graph_.xadj.empty()) {
         return;
     }
@@ -399,7 +401,7 @@ void EdgeListOnlyGenerator::GenerateCSR() {
     GenerateEdgeList();
 }
 
-void EdgeListOnlyGenerator::FinalizeCSR(MPI_Comm comm) {
+void EdgeListOnlyGenerator::FinalizeCSR(KAGEN_Comm comm) {
     if (!graph_.xadj.empty()) {
         return;
     }

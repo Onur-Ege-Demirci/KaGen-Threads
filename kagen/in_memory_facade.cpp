@@ -7,22 +7,29 @@
 #include "kagen/io.h"
 #include "kagen/tools/statistics.h"
 #include "kagen/tools/validator.h"
+#include "kagen/kagen_communicator.h"
 
-#include <mpi.h>
+
 
 #include <cmath>
 #include <iomanip>
 #include <iostream>
-
+#include <chrono>
+#include <functional>
 namespace kagen {
-void GenerateInMemoryToDisk(PGeneratorConfig config, MPI_Comm comm) {
-    PEID size, rank;
-    MPI_Comm_size(comm, &size);
-    MPI_Comm_rank(comm, &rank);
 
+
+
+
+
+
+void GenerateInMemoryToDisk(PGeneratorConfig config, KAGEN_Comm comm) {
+    PEID size, rank;
+    comm.initialize_size(&size, &rank);
+    
     auto graph = GenerateInMemory(config, GraphRepresentation::EDGE_LIST, comm);
 
-    const auto t_start_io = MPI_Wtime();
+    const auto t_start_io = std::chrono::steady_clock::now();
 
     const std::string base_filename = config.output_graph.filename;
     for (const FileFormat& format: config.output_graph.formats) {
@@ -36,24 +43,27 @@ void GenerateInMemoryToDisk(PGeneratorConfig config, MPI_Comm comm) {
         GraphInfo info(graph, comm);
         auto      writer = factory->CreateWriter(config.output_graph, graph, info, rank, size);
         if (writer != nullptr) {
+            //TODO_O
             WriteGraph(*writer.get(), config.output_graph, rank == ROOT && !config.quiet, comm);
         } else if (!config.quiet && rank == ROOT) {
             std::cout << "Warning: invalid file format " << format << " for writing; skipping\n";
         }
     }
 
-    const auto t_end_io = MPI_Wtime();
+    const auto t_end_io = std::chrono::steady_clock::now();
+    
 
     if (!config.quiet && rank == ROOT) {
-        std::cout << "IO took " << std::fixed << std::setprecision(3) << t_end_io - t_start_io << " seconds"
+        std::chrono::duration<double> elapsed = t_end_io - t_start_io;
+        std::cout << "IO took " << std::fixed << std::setprecision(3) << elapsed.count() << " seconds"
                   << std::endl;
     }
 }
 
-Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, MPI_Comm comm) {
-    PEID rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, KAGEN_Comm comm) {
+
+    PEID size, rank;
+    comm.initialize_size(&size, &rank);
 
     const bool output_error = rank == ROOT;
     const bool output_info  = rank == ROOT && !config_template.quiet;
@@ -70,19 +80,19 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         if (output_error) {
             std::cerr << "Error: " << ex.what() << "\n";
         }
-        MPI_Barrier(comm);
-        MPI_Abort(comm, 1);
+        comm.barrier();
+        comm.abort(1);
     }
 
     if (output_info) {
         std::cout << "Generating graph ... " << std::flush;
     }
 
-    const auto t_start_graphgen = MPI_Wtime();
+    const auto t_start_graphgen = comm.getTime();
 
     auto generator = factory->Create(config, rank, size);
     generator->Generate(representation);
-    MPI_Barrier(comm);
+    comm.barrier();
 
     if (output_info) {
         std::cout << "OK" << std::endl;
@@ -94,7 +104,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
     }
     if (!config.skip_postprocessing) {
         generator->Finalize(comm);
-        MPI_Barrier(comm);
+        comm.barrier();
     }
     if (output_info) {
         std::cout << "OK" << std::endl;
@@ -110,12 +120,14 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         std::cout << "OK" << std::endl;
     }
 
-    const auto t_end_graphgen = MPI_Wtime();
+    const auto t_end_graphgen = comm.time();
 
     if (!config.skip_postprocessing && !config.quiet) {
         SInt num_global_edges_before, num_global_edges_after;
-        MPI_Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, KAGEN_MPI_SINT, MPI_SUM, ROOT, comm);
-        MPI_Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, KAGEN_MPI_SINT, MPI_SUM, ROOT, comm);
+        comm.Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, typeid(SInt) ,KAGEN_OP.SUM, ROOT);
+        comm.Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, typeid(SInt) ,KAGEN_OP.SUM, ROOT);
+        //TODO_O remove this comment MPI_Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, KAGEN_MPI_SINT, MPI_SUM, ROOT, comm);
+        //TODO_O remove this comment MPI_Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, KAGEN_MPI_SINT, MPI_SUM, ROOT, comm);
 
         if (num_global_edges_before != num_global_edges_after && output_info) {
             std::cout << "The number of edges changed from " << num_global_edges_before << " to "
@@ -125,6 +137,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
                       << ")" << std::endl;
         }
     }
+    //TODO_O oh god
     if (config.permute) {
         generator->PermuteVertices(config, comm);
     }
@@ -136,19 +149,21 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         if (output_info) {
             std::cout << "Validating graph ... " << std::flush;
         }
-
+        //TODO_O oh god 2 
         bool success = ValidateGraph(graph, config.self_loops, config.directed, false, comm);
-        MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_C_BOOL, MPI_LOR, comm);
+        comm.AllReduce(inplace_t, &success, 1, KAGEN_OP.LOR)
+        //TODO_O remove this comment MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_C_BOOL, MPI_LOR, comm);
         if (!success) {
             if (output_error) {
                 std::cerr << "Error: graph validation failed\n";
             }
-            MPI_Abort(comm, 1);
+            comm.abort(1);
         } else if (output_info) {
             std::cout << "OK" << std::endl;
         }
     }
 
+    //TODO_O
     // Statistics
     if (!config.quiet) {
         if (output_info) {

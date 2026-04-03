@@ -10,17 +10,23 @@
 #include "kagen/definitions.h"
 #include "kagen/external_memory_facade.h"
 #include "kagen/in_memory_facade.h"
-
-#include <mpi.h>
+#include "kagen_communicator.h"
 
 #include "CLI11.h"
 #include <iostream>
+#include <thread>
+#include <vector>
+#include <utility>
+#include <functional>
+
+int size;
+int rank;
+
 
 using namespace kagen;
 
+//TODO_O
 void PrintVersion() {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == ROOT) {
         std::cout << BuildDescription() << std::endl;
     }
@@ -521,15 +527,28 @@ This is mostly useful for experimental graph generators or when using KaGen to l
         "--extension", config.output_graph.extension, "Always append a default extension to the output filename.");
 }
 
+
+
+
+void apply_size_and_rank_threads(PEID *size, PEID *rank, PEID thread_count, PEID thread_id) {
+    *size = thread_count;
+    *rank = thread_id;
+}
+
+
+
+
 int main(int argc, char* argv[]) {
-    MPI_Init(&argc, &argv);
+
+    //TODO_O spawn threads here instead of comm
+    //TODO_O user is responsible for building the interface and spawning the threads, giving them the correct interface. 
 
     // Parse parameters
     PGeneratorConfig config;
     CLI::App         app("KaGen: Karlsruhe Graph Generator");
     SetupCommandLineArguments(app, config);
     CLI11_PARSE(app, argc, argv);
-
+    KAGEN_Comm comm;
     // Coordinates output format implies --coordinates
     if (std::find(config.output_graph.formats.begin(), config.output_graph.formats.end(), FileFormat::COORDINATES)
         != config.output_graph.formats.end()) {
@@ -541,11 +560,12 @@ int main(int argc, char* argv[]) {
         config.output_graph.extension = true;
     }
 
-    if (config.external.num_chunks > 1) {
-        GenerateExternalMemoryToDisk(config, MPI_COMM_WORLD);
-    } else {
-        GenerateInMemoryToDisk(config, MPI_COMM_WORLD);
-    }
 
-    return MPI_Finalize();
+    //TODO_O re-add MPI support here (eventually).
+
+    std::vector<std::thread> threads(thread_count);
+    
+
+    return comm.execute(std::bind(GenerateInMemoryToDisk, config, std::placeholder::_1));
+
 }

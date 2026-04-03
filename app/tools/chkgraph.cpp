@@ -13,6 +13,8 @@
 
 using namespace kagen;
 
+
+//TODO_O what is this?
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
     const PEID rank = GetCommRank(MPI_COMM_WORLD);

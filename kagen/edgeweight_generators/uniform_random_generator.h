@@ -3,6 +3,7 @@
 #include "kagen/context.h"
 #include "kagen/edgeweight_generators/edge_weight_generator.h"
 #include "kagen/kagen.h"
+#include "kagen/kagen_communicator.h"
 
 namespace kagen {
 /*!
@@ -12,14 +13,14 @@ namespace kagen {
  */
 class UniformRandomEdgeWeightGenerator : public EdgeWeightGenerator {
 public:
-    UniformRandomEdgeWeightGenerator(EdgeWeightConfig config, MPI_Comm comm, VertexRange vertex_range);
+    UniformRandomEdgeWeightGenerator(EdgeWeightConfig config, KAGEN_Comm comm, VertexRange vertex_range);
 
     void GenerateEdgeWeights(const XadjArray& xadj, const AdjncyArray& adjncy, EdgeWeights& weights) final;
     void GenerateEdgeWeights(const Edgelist& edgelist, EdgeWeights& weights) final;
 
 private:
     const EdgeWeightConfig config_;
-    MPI_Comm               comm_;
+    KAGEN_Comm               comm_;
     VertexRange            vertex_range_;
 };
 } // namespace kagen

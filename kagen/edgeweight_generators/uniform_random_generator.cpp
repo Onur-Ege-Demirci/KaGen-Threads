@@ -5,6 +5,7 @@
 #include "kagen/kagen.h"
 #include "kagen/tools/converter.h"
 #include "kagen/tools/utils.h"
+#include "kagen/kagen_communicator.h"
 
 #include <cassert>
 #include <random>
@@ -87,9 +88,9 @@ struct SrcDstEqual {
 
 void GenerateEdgeWeightsImpl(
     EdgeRange edge_range, EdgeWeights& weights, const EdgeWeightConfig& config, VertexRange vertex_range,
-    MPI_Comm comm_) {
+    KAGEN_Comm comm_) {
     PEID rank;
-    MPI_Comm_rank(comm_, &rank);
+    comm_.world_rank(&rank);
     std::mt19937                         gen = get_random_generator(rank);
     std::uniform_int_distribution<SSInt> weight_dist(config.weight_range_begin, config.weight_range_end - 1);
 
@@ -114,7 +115,7 @@ void GenerateEdgeWeightsImpl(
             }
         }
     }
-
+    //TODO_O huh?
     MPI_Datatype edgedata_mpi_type;
     MPI_Type_contiguous(sizeof(EdgeData), MPI_BYTE, &edgedata_mpi_type);
     MPI_Type_commit(&edgedata_mpi_type);
@@ -139,7 +140,7 @@ void GenerateEdgeWeightsImpl(
 } // namespace
 
 UniformRandomEdgeWeightGenerator::UniformRandomEdgeWeightGenerator(
-    EdgeWeightConfig config, MPI_Comm comm, VertexRange vertex_range)
+    EdgeWeightConfig config, KAGEN_Comm comm, VertexRange vertex_range)
     : config_(config),
       comm_(comm),
       vertex_range_(vertex_range) {
