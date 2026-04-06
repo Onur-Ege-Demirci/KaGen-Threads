@@ -3,6 +3,7 @@
 #include "kagen/context.h"
 #include "kagen/in_memory_facade.h"
 #include "kagen/streaming_facade.h"
+#include "kagen/communicators/communicator.h"
 
 #include <cmath>
 #include <numeric>

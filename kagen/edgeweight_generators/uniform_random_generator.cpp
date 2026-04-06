@@ -5,7 +5,7 @@
 #include "kagen/kagen.h"
 #include "kagen/tools/converter.h"
 #include "kagen/tools/utils.h"
-#include "kagen/kagen_communicator.h"
+#include "kagen/communicators/communicator.h"
 
 #include <cassert>
 #include <random>
@@ -88,7 +88,7 @@ struct SrcDstEqual {
 
 void GenerateEdgeWeightsImpl(
     EdgeRange edge_range, EdgeWeights& weights, const EdgeWeightConfig& config, VertexRange vertex_range,
-    KAGEN_Comm comm_) {
+    Communicator comm_) {
     PEID rank;
     comm_.world_rank(&rank);
     std::mt19937                         gen = get_random_generator(rank);

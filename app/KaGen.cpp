@@ -547,7 +547,7 @@ int main(int argc, char* argv[]) {
 
     //TODO_O spawn threads here instead of comm
     //TODO_O user is responsible for building the interface and spawning the threads, giving them the correct interface. 
-
+    //TODO_O add parameter parsing to the app. Maybe not?  
     // Parse parameters
     PGeneratorConfig config;
     CLI::App         app("KaGen: Karlsruhe Graph Generator");

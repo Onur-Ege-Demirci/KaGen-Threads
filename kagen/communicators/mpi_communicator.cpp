@@ -41,15 +41,8 @@ class MPI_Communicator : Communicator {
             MPI_Comm_size(comm, size);
         }
 
-        void GetWorldRank(int *rank) override {
-            MPI_Comm_rank(comm, rank);
-        }
-
         int Execute(std::function<void(CommInterface)> func) {
-            int rank;
-            GetWorldRank(&rank);
-            CommInterface interface() = CommInterface(rank, this);
-            return func(interface);
+            //TODO_O
         }
         void Barrier() override {
             MPI_Barrier(comm);
@@ -70,7 +63,7 @@ class MPI_Communicator : Communicator {
             MPI_Allgather(sendbuf, sendcount, getMPIType(send_type), recvbuf, recvcount, getMPIType(recv_type), comm);
         }
         void Allgather(inplace_T, void* recvbuf, int recvcount, std::type_info recv_type, COMM_OP op, int root) override {
-            MPI_Allgather(MPI_IN_PLACE, sendcount, getMPIType(send_type), recvbuf, recvcount, getMPIType(recv_type), comm);
+            MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, recvbuf, recvcount, getMPIType(recv_type), comm);
         }
         
         void AllgatherV(const void* sendbuf, int sendcount, std::type_info send_type, void* recvbuf, const int recvcounts[], const int displs[], std::type_info recv_type) override {

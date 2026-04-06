@@ -15,12 +15,6 @@ enum class CommunicatorType {
 }
 
 
-static CommInterface getCommunicator(CommunicatorType type) {
-
-}
-
-
-
 CommInterface getMPICommunicator() {
     Communicator comm = MPI_Communicator();
     int rank; 
@@ -29,9 +23,16 @@ CommInterface getMPICommunicator() {
 }
 
 
-//TODO_O this needs to be called on every thread?
-CommInterface getThreadCommunicator(vector<thread>& threads) {
-    Communicator comm = Thread_Communicator(threads);
-    
-    
+//getThreadCommunicator just constructs the communicator. The user is then responsible for creating the threads in the first place as well as lining up the relevant execution. 
+//A created thread can be added to the communicator using addThreadToCommunicator, and the handle for the CommInterface received through it.
+Communicator getThreadCommunicator() {
+    Communicator comm = Thread_Communicator();
+    return comm;
 }
+
+//Add a thread to to communicator and get the appropriate CommInterface
+CommInterface addThreadToCommunicator(Thread_Communicator& communicator, thread& t) {
+    int rank = communicator.addThreadToCommunicator(t);
+    return CommInterface(rank, communicator);
+}
+

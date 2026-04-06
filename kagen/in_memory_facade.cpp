@@ -126,8 +126,6 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         SInt num_global_edges_before, num_global_edges_after;
         comm.Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, typeid(SInt) ,KAGEN_OP.SUM, ROOT);
         comm.Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, typeid(SInt) ,KAGEN_OP.SUM, ROOT);
-        //TODO_O remove this comment MPI_Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, KAGEN_MPI_SINT, MPI_SUM, ROOT, comm);
-        //TODO_O remove this comment MPI_Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, KAGEN_MPI_SINT, MPI_SUM, ROOT, comm);
 
         if (num_global_edges_before != num_global_edges_after && output_info) {
             std::cout << "The number of edges changed from " << num_global_edges_before << " to "
@@ -152,7 +150,6 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         //TODO_O oh god 2 
         bool success = ValidateGraph(graph, config.self_loops, config.directed, false, comm);
         comm.AllReduce(inplace_t, &success, 1, KAGEN_OP.LOR)
-        //TODO_O remove this comment MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_C_BOOL, MPI_LOR, comm);
         if (!success) {
             if (output_error) {
                 std::cerr << "Error: graph validation failed\n";

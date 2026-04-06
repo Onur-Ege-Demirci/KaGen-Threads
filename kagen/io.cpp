@@ -12,6 +12,7 @@
 #include "kagen/kagen.h"
 #include "kagen/tools/postprocessor.h"
 #include "kagen/tools/utils.h"
+#include "kagen/communicators/communicator.h"
 
 #include <mpi.h>
 
@@ -202,7 +203,7 @@ GraphFragment ReadGraphFragment(
     };
 }
 
-Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, MPI_Comm comm) {
+Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, Communicator comm) {
     if (fragment.deficits & ReaderDeficits::REQUIRES_REDISTRIBUTION) {
         if (fragment.graph.representation == GraphRepresentation::CSR) {
             throw std::invalid_argument("not implemented");
