@@ -17,7 +17,7 @@
 #include <thread>
 #include <vector>
 #include <utility>
-#include <functional>
+
 
 int size;
 int rank;
@@ -569,8 +569,8 @@ int main(int argc, char* argv[]) {
     //TODO_O re-add MPI support here (eventually).
 
     std::vector<std::thread> threads(thread_count);
-    
+    CommInterface comm_interface = ....
 
-    return comm.execute(std::bind(GenerateInMemoryToDisk, config, std::placeholder::_1));
+    GenerateInMemoryToDisk(config, comm_interface);
 
 }

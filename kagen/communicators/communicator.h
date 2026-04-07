@@ -19,15 +19,6 @@ class Communicator {
     public:
         virtual void GetWorldRank(int *rank) = 0;
         virtual void GetWorldSize(int *size) = 0;
-
-        //TODO_O figure this out 
-        int Execute(std::function<void(CommInterface)> func) {
-            int rank;
-            GetWorldRank(&rank);
-            CommInterface interface(rank, this);
-            return func(interface);
-        }
-
         virtual void Barrier() = 0;
         virtual void Abort(int code) = 0;
         virtual void Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) = 0;
