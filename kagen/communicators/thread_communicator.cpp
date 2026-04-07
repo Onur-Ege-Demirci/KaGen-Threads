@@ -6,9 +6,13 @@
 #include <barrier>
 #include <unordered_map>
 #include <typeindex>
+#include <map>
 #include <mutex>
 #include <condition_variable>
 #include <utility>
+#include <cstring>
+#include <algorithm>
+#include <thread>
 
 using std::vector;
 using std::thread;
@@ -29,38 +33,91 @@ class Thread_Communicator : Communicator {
         static const int root = 0;
         vector<thread>& threads;
         unordered_map<std::thread::id, int> thread_id_to_rank;
-        vector<void*> shared_reduce_buffer;  // Each thread writes to [rank]
-        vector<void*> recv_buffers;  // Each thread writes to [rank]
-        vector<std::pair<int,int>> allgather_counts;
+        
+        std::vector<ConstBufferRef> shared_reduce_buffer;  // Each thread writes to [rank]
+        std::vector<BufferRef> recv_buffers;               // Each thread writes to [rank]
+        std::vector<std::pair<int,int>> allgather_counts;  // For variable-length gatherings
 
         std::mutex reduce_mutex;
         std::condition_variable reduce_cv;
         int threads_arrived = 0;
-        //TODO_O needs to support floats, unsigneds and doubles => not as type agnostic as I had hoped for
-        static std::function<void(const void*, const void*, size_t)> getOp(CommOp op, std::type_index type) {   //Combines the element in the first parameter with the element in the second parameter, overwriting the first element in place. 
+        
+        template<typename T>
+        static std::function<void(T*, const T*, size_t)> getOp(CommOp op) {
             switch(op){
-                case CommOp::LOR:
-                    //TODO_O
-                    break;
-                case CommOp::MAX:
-                    //TODO_O
-                    break;
-                case CommOp::MIN:
-                    //TODO_O
-                    break;
                 case CommOp::SUM:
-                    //TODO_O
-                    break;
+                    return [](T* dest, const T* src, size_t) {
+                        *dest += *src;
+                    };
+                case CommOp::MAX:
+                    return [](T* dest, const T* src, size_t) {
+                        *dest = std::max(*dest, *src);
+                    };
+                case CommOp::MIN:
+                    return [](T* dest, const T* src, size_t) {
+                        *dest = std::min(*dest, *src);
+                    };
+                case CommOp::LOR:
+                    return [](T* dest, const T* src, size_t) {
+                        *dest = *dest || *src;
+                    };
+                default:
+                    return [](T*, const T*, size_t) {};
             }
-
+        }
+        
+        // Helper to apply operation with automatic type dispatch from type_info
+        static void applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count) {
+            if (type == typeid(int)) {
+                auto op_func = getOp<int>(op);
+                int* d = static_cast<int*>(dest);
+                const int* s = static_cast<const int*>(src);
+                for (size_t i = 0; i < count; i++) {
+                    op_func(&d[i], &s[i], 1);
+                }
+            } else if (type == typeid(double)) {
+                auto op_func = getOp<double>(op);
+                double* d = static_cast<double*>(dest);
+                const double* s = static_cast<const double*>(src);
+                for (size_t i = 0; i < count; i++) {
+                    op_func(&d[i], &s[i], 1);
+                }
+            } else if (type == typeid(unsigned int)) {
+                auto op_func = getOp<unsigned int>(op);
+                unsigned int* d = static_cast<unsigned int*>(dest);
+                const unsigned int* s = static_cast<const unsigned int*>(src);
+                for (size_t i = 0; i < count; i++) {
+                    op_func(&d[i], &s[i], 1);
+                }
+            } else if (type == typeid(long long)) {
+                auto op_func = getOp<long long>(op);
+                long long* d = static_cast<long long*>(dest);
+                const long long* s = static_cast<const long long*>(src);
+                for (size_t i = 0; i < count; i++) {
+                    op_func(&d[i], &s[i], 1);
+                }
+            } else if (type == typeid(unsigned long long)) {
+                auto op_func = getOp<unsigned long long>(op);
+                unsigned long long* d = static_cast<unsigned long long*>(dest);
+                const unsigned long long* s = static_cast<const unsigned long long*>(src);
+                for (size_t i = 0; i < count; i++) {
+                    op_func(&d[i], &s[i], 1);
+                }
+            } else if (type == typeid(long double)) {
+                auto op_func = getOp<long double>(op);
+                long double* d = static_cast<long double*>(dest);
+                const long double* s = static_cast<const long double*>(src);
+                for (size_t i = 0; i < count; i++) {
+                    op_func(&d[i], &s[i], 1);
+                }
+            }
         }
         
         void flush_buffer() {
             for (auto& buffer : shared_reduce_buffer) {
-                buffer = nullptr;
+                buffer = ConstBufferRef();
             }
         }
-
 
         int getCurrentRank() {
             auto thread_id = std::this_thread::get_id();
@@ -72,9 +129,10 @@ class Thread_Communicator : Communicator {
             int rank = threads.size();
             threads.push_back(t);
             thread_id_to_rank[t.get_id()] = rank;
-            shared_reduce_buffer.emplace_back();
-            recv_buffers.emplace_back();
-            allgather_counts.emplace_back();
+            // Resize rank-indexed buffers
+            shared_reduce_buffer.push_back(ConstBufferRef());
+            recv_buffers.push_back(BufferRef());
+            allgather_counts.push_back({0, 0});
             return rank;
         }
 
@@ -98,26 +156,27 @@ class Thread_Communicator : Communicator {
         void Abort(int code) override {
             std::terminate();
         }
-
-        void Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) override {
+        void Reduce(ConstBufferRef sendbuf, BufferRef recvbuf, CommOp op, int root) override {
             int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
             {
                 std::unique_lock<std::mutex> lock(reduce_mutex);
-                shared_reduce_buffer[rank] = const_cast<void*>(sendbuf);
+                shared_reduce_buffer[rank] = sendbuf;
                 threads_arrived++;
+                
                 if (rank == root) {
                     if (threads_arrived != threads.size()) {
                         reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
                     }
                     
-                    auto operation = getOp(op);
-                    int type_size = type_sizes.at(std::type_index(type)); 
-                    for (int i = 0; i < count; i++) {
-                        memcpy(recvbuf + i * type_size, shared_reduce_buffer[0] + i * type_size, type_size);  // Initialize recvbuf with root's data
-                        for (int t = type_size; t < threads.size(); t+= type_size) {
-                            operation(recvbuf + i * type_size, shared_reduce_buffer[t] + i * type_size, type_size);  // Reduce with each thread's data
-                        }
+                    // Initialize recvbuf with root's data
+                    std::memcpy(recvbuf.data, shared_reduce_buffer[0].data, recvbuf.count * elem_size);
+                    
+                    // Reduce with each thread's data
+                    for (int t = 1; t < threads.size(); t++) {
+                        applyOp(op, *recvbuf.type_info, recvbuf.data, shared_reduce_buffer[t].data, recvbuf.count);
                     }
+                    
                     threads_arrived = 0;
                     reduce_cv.notify_all();
                     flush_buffer();
@@ -125,120 +184,276 @@ class Thread_Communicator : Communicator {
                     reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
                 }
             }
-     
-        }
-        void Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) override {
-            int rank = getCurrentRank();
-            {
-                std::unique_lock<std::mutex> lock(reduce_mutex);
-                shared_reduce_buffer[rank] = const_cast<void*>(recvbuf);
-                threads_arrived++;
-                if (rank == root) {
-                    if (threads_arrived != threads.size()) {
-                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
-                    }
-                    
-                    auto operation = getOp(op);
-                    int type_size = type_sizes.at(std::type_index(type)); 
-                    for (int i = 0; i < count; i++) {
-                        for (int t = type_size; t < threads.size(); t+= type_size) {
-                            operation(recvbuf + i * type_size, shared_reduce_buffer[t] + i * type_size, type_size);  // Reduce with each thread's data
-                        }
-                    }
-                    threads_arrived = 0;
-                    reduce_cv.notify_all();
-                    flush_buffer();
-                } else {
-                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
-                }
-            }
-        }
-        void Allreduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
-            int rank = getCurrentRank();            
-            recv_buffers[rank] = recvbuf;
-            {
-                std::unique_lock<std::mutex> lock(reduce_mutex);
-                shared_reduce_buffer[rank] = const_cast<void*>(sendbuf);
-                threads_arrived++;
-                if (rank == root) {
-                    if (threads_arrived != threads.size()) {
-                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
-                    }
-                    
-                    auto operation = getOp(op);
-                    int type_size = type_sizes.at(std::type_index(type)); 
-                    for (int i = 0; i < count; i++) {
-                        memcpy(recvbuf + i * type_size, shared_reduce_buffer[0] + i * type_size, type_size);  // Initialize recvbuf with root's data
-                        for (int t = type_size; t < threads.size(); t+= type_size) {
-                            operation(recvbuf + i * type_size, shared_reduce_buffer[t] + i * type_size, type_size);  // Reduce with each thread's data
-                        }
-                    }
-                    for (int t = 0; t < threads.size(); t++) {
-                        if (recv_buffers[t] != nullptr) {
-                            memcpy(recv_buffers[t], recvbuf, count * type_size); 
-                        }
-                    }
-                    threads_arrived = 0;
-                    reduce_cv.notify_all();
-                    flush_buffer();
-                } else {
-                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
-                    recv_buffers[rank] = nullptr;
-                }
-            }
-        }
-        void Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type, CommOp op, int root) override {
-            int rank = getCurrentRank();            
-            recv_buffers[rank] = recvbuf;
-            all
-            {
-                std::unique_lock<std::mutex> lock(reduce_mutex);
-                shared_reduce_buffer[rank] = const_cast<void*>(sendbuf);
-                threads_arrived++;
-                if (rank == root) {
-                    if (threads_arrived != threads.size()) {
-                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
-                    }
-                    
-                    auto operation = getOp(op);
-                    int type_size = type_sizes.at(std::type_index(type)); 
-                    for (int i = 0; i < count; i++) {
-                        memcpy(recvbuf + i * type_size, shared_reduce_buffer[0] + i * type_size, type_size);  // Initialize recvbuf with root's data
-                        for (int t = type_size; t < threads.size(); t+= type_size) {
-                            operation(recvbuf + i * type_size, shared_reduce_buffer[t] + i * type_size, type_size);  // Reduce with each thread's data
-                        }
-                    }
-                    for (int t = 0; t < threads.size(); t++) {
-                        if (recv_buffers[t] != nullptr) {
-                            memcpy(recv_buffers[t], recvbuf, count * type_size); 
-                        }
-                    }
-                    threads_arrived = 0;
-                    reduce_cv.notify_all();
-                    flush_buffer();
-                } else {
-                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
-                    recv_buffers[rank] = nullptr;
-                }
-            }
-        }
-        void Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type, CommOp op, int root) override {
-            // Implement in-place all-gather
         }
         
-        void AllgatherV(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, const int recvcounts[], const int displs[], const std::type_info& recv_type) override {
-            // Implement all-gather-v
+        void Reduce(inplace_t, BufferRef recvbuf, CommOp op, int root) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = ConstBufferRef(recvbuf.data, recvbuf.count);
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // Inplace reduce with each thread's data
+                    for (int t = 1; t < threads.size(); t++) {
+                        applyOp(op, *recvbuf.type_info, recvbuf.data, shared_reduce_buffer[t].data, recvbuf.count);
+                    }
+                    
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                }
+            }
         }
-   
-        void Broadcast(void* buffer, int count, const std::type_info& type, int root) override {
-            // Implement broadcast using shared memory
+        void Allreduce(ConstBufferRef sendbuf, BufferRef recvbuf, CommOp op) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            
+            recv_buffers[rank] = recvbuf;
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = sendbuf;
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // Initialize recvbuf with root's data
+                    std::memcpy(recvbuf.data, shared_reduce_buffer[0].data, recvbuf.count * elem_size);
+                    
+                    // Reduce with each thread's data
+                    for (int t = 1; t < threads.size(); t++) {
+                        applyOp(op, *recvbuf.type_info, recvbuf.data, shared_reduce_buffer[t].data, recvbuf.count);
+                    }
+                    
+                    // Copy result to all threads' buffers
+                    for (int t = 0; t < threads.size(); t++) {
+                        if (recv_buffers[t].data != nullptr) {
+                            std::memcpy(recv_buffers[t].data, recvbuf.data, recvbuf.count * elem_size);
+                        }
+                    }
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                    recv_buffers[rank] = BufferRef();
+                }
+            }
         }
-        void Alltoall(const void* sendbuf, int sendcount, const std::type_info& send_type, void *recvbuf, int recvcount, const std::type_info& recv_type) override {
-            // Implement all-to-all
+
+
+        //TODO_O The devil went down to Georgia....
+        void Allgather(ConstBufferRef sendbuf, BufferRef recvbuf, CommOp op, int root) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            
+            recv_buffers[rank] = recvbuf;
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = sendbuf;
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // Gather all data into the receive buffer
+                    size_t offset = 0;
+                    for (int t = 0; t < threads.size(); t++) {
+                        std::memcpy(
+                            static_cast<uint8_t*>(recvbuf.data) + offset,
+                            shared_reduce_buffer[t].data,
+                            shared_reduce_buffer[t].count * elem_size
+                        );
+                        offset += shared_reduce_buffer[t].count * elem_size;
+                    }
+                    
+                    // Copy gathered result to all threads' buffers
+                    for (int t = 0; t < threads.size(); t++) {
+                        if (recv_buffers[t].data != nullptr) {
+                            std::memcpy(recv_buffers[t].data, recvbuf.data, recvbuf.count * elem_size);
+                        }
+                    }
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                    recv_buffers[rank] = BufferRef();
+                }
+            }
         }
-        void AlltoallV(const void *sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type, void *recvbuf, const int recvcounts[], 
-            const int rdispls[], const std::type_info& recv_type) override {
-            // Implement all-to-all-v
+        
+        void Allgather(inplace_t, BufferRef recvbuf, CommOp op, int root) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = ConstBufferRef(recvbuf.data, recvbuf.count);
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // In-place gather: each thread's data is already in recvbuf at the appropriate offset
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                }
+            }
+        }
+        
+        void AllgatherV(ConstBufferRef sendbuf, BufferRef recvbuf, const int recvcounts[], const int displs[]) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = sendbuf;
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // Gather variable-length data
+                    for (int t = 0; t < threads.size(); t++) {
+                        if (recvcounts[t] > 0) {
+                            std::memcpy(
+                                static_cast<uint8_t*>(recvbuf.data) + displs[t] * elem_size,
+                                shared_reduce_buffer[t].data,
+                                recvcounts[t] * elem_size
+                            );
+                        }
+                    }
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                }
+            }
+        }
+        
+        void Broadcast(BufferRef buffer, int root) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*buffer.type_info));
+            
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                if (rank == root) {
+                    shared_reduce_buffer[rank] = ConstBufferRef(buffer.data, buffer.count);
+                }
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    // Copy from root's buffer
+                    std::memcpy(buffer.data, shared_reduce_buffer[root].data, buffer.count * elem_size);
+                    threads_arrived--;
+                    if (threads_arrived == 0) {
+                        reduce_cv.notify_all();
+                    }
+                }
+                flush_buffer();
+            }
+        }
+        
+        void Alltoall(ConstBufferRef sendbuf, BufferRef recvbuf) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            int msg_size = static_cast<int>(sendbuf.count / threads.size());
+            
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = sendbuf;
+                recv_buffers[rank] = recvbuf;
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // Perform all-to-all scatter
+                    for (int src = 0; src < threads.size(); src++) {
+                        for (int dst = 0; dst < threads.size(); dst++) {
+                            std::memcpy(
+                                static_cast<uint8_t*>(recv_buffers[dst].data) + src * msg_size * elem_size,
+                                static_cast<uint8_t*>(shared_reduce_buffer[src].data) + dst * msg_size * elem_size,
+                                msg_size * elem_size
+                            );
+                        }
+                    }
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                    recv_buffers[rank] = BufferRef();
+                }
+            }
+        }
+        
+        void AlltoallV(ConstBufferRef sendbuf, const int sendcounts[], const int sdispls[], BufferRef recvbuf, const int recvcounts[], const int rdispls[]) override {
+            int rank = getCurrentRank();
+            size_t elem_size = type_sizes.at(std::type_index(*recvbuf.type_info));
+            
+            {
+                std::unique_lock<std::mutex> lock(reduce_mutex);
+                shared_reduce_buffer[rank] = sendbuf;
+                recv_buffers[rank] = recvbuf;
+                threads_arrived++;
+                
+                if (rank == root) {
+                    if (threads_arrived != threads.size()) {
+                        reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
+                    }
+                    
+                    // Perform variable-length all-to-all scatter
+                    for (int src = 0; src < threads.size(); src++) {
+                        for (int dst = 0; dst < threads.size(); dst++) {
+                            if (sendcounts[src * threads.size() + dst] > 0) {
+                                std::memcpy(
+                                    static_cast<uint8_t*>(recv_buffers[dst].data) + rdispls[src] * elem_size,
+                                    static_cast<uint8_t*>(shared_reduce_buffer[src].data) + sdispls[src * threads.size() + dst] * elem_size,
+                                    sendcounts[src * threads.size() + dst] * elem_size
+                                );
+                            }
+                        }
+                    }
+                    threads_arrived = 0;
+                    reduce_cv.notify_all();
+                    flush_buffer();
+                } else {
+                    reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
+                    recv_buffers[rank] = BufferRef();
+                }
+            }
         }
 
     }
