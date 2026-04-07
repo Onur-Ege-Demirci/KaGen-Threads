@@ -2,7 +2,7 @@
 
 #include "kagen/tools/utils.h"
 
-#include <mpi.h>
+#include "kagen/communicators/communicator_interface.h"
 
 #include <algorithm>
 #include <cassert>
@@ -61,10 +61,10 @@ void AddNonlocalReverseEdges(
 }
 
 void RedistributeEdgesByVertexRange(
-    Edgelist& edge_list, const VertexRange vertex_range, MPI_Comm comm, bool use_binary_search) {
+    Edgelist& edge_list, const VertexRange vertex_range, CommInterface comm, bool use_binary_search) {
     PEID rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetRank(&rank);
+    comm.GetSize(&size);
 
     const auto ranges = AllgatherVertexRange(vertex_range, comm);
     const auto from   = ranges[rank].first;

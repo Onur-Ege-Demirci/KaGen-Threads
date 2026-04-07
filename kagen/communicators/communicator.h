@@ -66,7 +66,6 @@ class Communicator {
         virtual void Broadcast(BufferRef buffer, int root) = 0;
         virtual void Alltoall(ConstBufferRef sendbuf, BufferRef recvbuf) = 0;
         virtual void AlltoallV(ConstBufferRef sendbuf, const int sendcounts[], const int sdispls[], BufferRef recvbuf, const int recvcounts[], const int rdispls[]) = 0;
-};
+        virtual void Broadcast(BufferRef buffer, int root) = 0;
+    };
 
-
-template<typename T>

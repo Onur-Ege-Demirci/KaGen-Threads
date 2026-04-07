@@ -88,7 +88,7 @@ struct SrcDstEqual {
 
 void GenerateEdgeWeightsImpl(
     EdgeRange edge_range, EdgeWeights& weights, const EdgeWeightConfig& config, VertexRange vertex_range,
-    Communicator comm_) {
+    CommInterface comm_) {
     PEID rank;
     comm_.world_rank(&rank);
     std::mt19937                         gen = get_random_generator(rank);
@@ -140,7 +140,7 @@ void GenerateEdgeWeightsImpl(
 } // namespace
 
 UniformRandomEdgeWeightGenerator::UniformRandomEdgeWeightGenerator(
-    EdgeWeightConfig config, KAGEN_Comm comm, VertexRange vertex_range)
+    EdgeWeightConfig config, CommInterface comm, VertexRange vertex_range)
     : config_(config),
       comm_(comm),
       vertex_range_(vertex_range) {

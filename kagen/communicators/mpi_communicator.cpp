@@ -45,9 +45,6 @@ class MPI_Communicator : Communicator {
             MPI_Comm_size(comm, size);
         }
 
-        int Execute(std::function<void(CommInterface)> func) {
-            //TODO_O
-        }
         void Barrier() override {
             MPI_Barrier(comm);
         }
@@ -80,9 +77,7 @@ class MPI_Communicator : Communicator {
         void Alltoall(ConstBufferRef sendbuf, BufferRef recvbuf) override {
             MPI_Alltoall(sendbuf.data, static_cast<int>(sendbuf.count), getMPIType(*sendbuf.type_info), recvbuf.data, static_cast<int>(recvbuf.count), getMPIType(*recvbuf.type_info), comm);
         }
-            MPI_Alltoall(sendbuf.data, static_cast<int>(sendbuf.count), getMPIType(send_type), recvbuf.data, static_cast<int>(recvbuf.count), getMPIType(recv_type), comm);
-        }
         void AlltoallV(ConstBufferRef sendbuf, const int sendcounts[], const int sdispls[], BufferRef recvbuf, const int recvcounts[], const int rdispls[]) override {
             MPI_AlltoallV(sendbuf.data, sendcounts, sdispls, getMPIType(*sendbuf.type_info), recvbuf.data, recvcounts, rdispls, getMPIType(*recvbuf.type_info), comm);
         }
-}
+    }

@@ -15,7 +15,7 @@
 #include <thread>
 
 using std::vector;
-using std::thread;
+using std::thread;  
 static const unordered_map<std::type_index, size_t> type_sizes = {
     {typeid(int), sizeof(int)},
     {typeid(double), sizeof(double)},
@@ -26,8 +26,8 @@ static const unordered_map<std::type_index, size_t> type_sizes = {
 }; 
 using std::unordered_map;
 
-//TODO_O fix api again so it uses type_index. How much am I allowed to change it anyway? Can I get rid of the void* calls?? Does that even help?
-//This class is a communicator for threads within the same process, using shared memory and synchronization primitives to implement the communication operations. The number of threads can be increased during runtime. Decreasing isn't supported (yet). 
+
+//This class is a communicator for threads within the same process, using shared memory and synchronization primitives to implement the communication operations. The number of threads can be increased during runtime. Decreasing isn't supported yet (ETA probably never). 
 class Thread_Communicator : Communicator {
     private:
         static const int root = 0;
@@ -129,10 +129,11 @@ class Thread_Communicator : Communicator {
             int rank = threads.size();
             threads.push_back(t);
             thread_id_to_rank[t.get_id()] = rank;
-            // Resize rank-indexed buffers
+   
             shared_reduce_buffer.push_back(ConstBufferRef());
             recv_buffers.push_back(BufferRef());
             allgather_counts.push_back({0, 0});
+
             return rank;
         }
 

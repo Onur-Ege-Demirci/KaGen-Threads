@@ -15,7 +15,7 @@
 #include "kagen/vertexweight_generators/voiding_generator.h"
 
 
-#include "kagen/kagen_communicator.h"
+#include "kagen/Communicatorunicator.h"
 #include <mpi.h>
 
 #include <algorithm>
@@ -45,7 +45,7 @@ Generator* Generator::Generate(const GraphRepresentation representation) {
     return this;
 }
 
-Generator* Generator::Finalize(KAGEN_Comm comm) {
+Generator* Generator::Finalize(CommInterface comm) {
     switch (desired_representation_) {
         case GraphRepresentation::EDGE_LIST:
             FinalizeEdgeList(comm);
@@ -288,11 +288,12 @@ auto ApplyPermutationAndComputeSendBuffers(
 }
 } // namespace
 
-void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config, [[maybe_unused]] MPI_Comm comm) {
+void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config, [[maybe_unused]] CommInterface comm) {
 #ifdef KAGEN_XXHASH_FOUND
     int size = -1;
     int rank = -1;
-    MPI_Comm_rank(comm, &rank);
+    comm.GetRank(&rank);
+    comm.GetSize(&size);
     MPI_Comm_size(comm, &size);
 
     auto permutator = random_permutation::FeistelPseudoRandomPermutation::buildPermutation(config.n - 1, 0);
@@ -342,7 +343,7 @@ void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config,
 }
 
 std::unique_ptr<kagen::VertexWeightGenerator>
-CreateVertexWeightGenerator(const VertexWeightConfig weight_config, KAGEN_Comm comm) {
+CreateVertexWeightGenerator(const VertexWeightConfig weight_config, CommInterface comm) {
     switch (weight_config.generator_type) {
         case VertexWeightGeneratorType::DEFAULT:
             return std::make_unique<DefaultVertexWeightGenerator>(weight_config);
@@ -355,7 +356,7 @@ CreateVertexWeightGenerator(const VertexWeightConfig weight_config, KAGEN_Comm c
     throw std::runtime_error("invalid weight generator type");
 }
 
-void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, KAGEN_Comm comm) {
+void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, CommInterface comm) {
     std::unique_ptr<kagen::VertexWeightGenerator> vertex_weight_generator =
         CreateVertexWeightGenerator(weight_config, comm);
 
@@ -370,15 +371,15 @@ void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, KAGEN_Co
     }
 }
 
-void Generator::FinalizeEdgeList(KAGEN_Comm) {}
+void Generator::FinalizeEdgeList(Communicator) {}
 
-void Generator::FinalizeCSR(KAGEN_Comm) {}
+void Generator::FinalizeCSR(Communicator) {}
 
 void CSROnlyGenerator::GenerateEdgeList() {
     GenerateCSR();
 }
 
-void CSROnlyGenerator::FinalizeEdgeList(KAGEN_Comm comm) {
+void CSROnlyGenerator::FinalizeEdgeList(CommInterface comm) {
     if (graph_.xadj.empty()) {
         return;
     }
@@ -401,7 +402,7 @@ void EdgeListOnlyGenerator::GenerateCSR() {
     GenerateEdgeList();
 }
 
-void EdgeListOnlyGenerator::FinalizeCSR(KAGEN_Comm comm) {
+void EdgeListOnlyGenerator::FinalizeCSR(CommInterface comm) {
     if (!graph_.xadj.empty()) {
         return;
     }

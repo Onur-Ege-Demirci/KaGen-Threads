@@ -203,7 +203,7 @@ GraphFragment ReadGraphFragment(
     };
 }
 
-Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, Communicator comm) {
+Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, CommInterface comm) {
     if (fragment.deficits & ReaderDeficits::REQUIRES_REDISTRIBUTION) {
         if (fragment.graph.representation == GraphRepresentation::CSR) {
             throw std::invalid_argument("not implemented");
@@ -222,7 +222,7 @@ Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, Communica
                 n = FindNumberOfVerticesInEdgelist(fragment.graph.edges, comm);
             } else {
                 n = fragment.graph.vertex_range.second;
-                MPI_Bcast(&n, 1, KAGEN_MPI_SINT, size - 1, comm);
+                comm.Broadcast(&n, 1, typeid(unsigned long long), size - 1);
             }
             return n;
         }();
@@ -234,7 +234,7 @@ Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, Communica
     return std::move(fragment.graph);
 }
 
-void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, const bool output, MPI_Comm comm) {
+void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, const bool output, CommInterface comm) {
     const PEID size = GetCommSize(comm);
     const PEID rank = GetCommRank(comm);
 
@@ -287,7 +287,7 @@ void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, const bool
                 if (rank == pe) {
                     continue_with_next_pass = writer.Write(pass, filename);
                 }
-                MPI_Barrier(comm);
+                comm.barrier();
                 if (output) {
                     std::cout << "OK" << std::endl;
                 }

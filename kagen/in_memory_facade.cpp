@@ -7,7 +7,7 @@
 #include "kagen/io.h"
 #include "kagen/tools/statistics.h"
 #include "kagen/tools/validator.h"
-#include "kagen/kagen_communicator.h"
+#include "kagen/Communicatorunicator.h"
 
 
 
@@ -23,7 +23,7 @@ namespace kagen {
 
 
 
-void GenerateInMemoryToDisk(PGeneratorConfig config, KAGEN_Comm comm) {
+void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm) {
     PEID size, rank;
     comm.initialize_size(&size, &rank);
     
@@ -60,7 +60,7 @@ void GenerateInMemoryToDisk(PGeneratorConfig config, KAGEN_Comm comm) {
     }
 }
 
-Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, KAGEN_Comm comm) {
+Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, CommInterface comm) {
 
     PEID size, rank;
     comm.initialize_size(&size, &rank);

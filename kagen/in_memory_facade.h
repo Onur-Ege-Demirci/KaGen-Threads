@@ -2,9 +2,9 @@
 
 #include "kagen/context.h"
 #include "kagen/kagen.h"
-#include "kagen/kagen_communicator.h"
+#include "kagen/Communicatorunicator.h"
 
 namespace kagen {
-void  GenerateInMemoryToDisk(PGeneratorConfig config, KAGEN_Comm comm);
-Graph GenerateInMemory(const PGeneratorConfig& config, GraphRepresentation representation, KAGEN_Comm comm);
+void  GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm);
+Graph GenerateInMemory(const PGeneratorConfig& config, GraphRepresentation representation, CommInterface comm);
 } // namespace kagen

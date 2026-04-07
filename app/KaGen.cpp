@@ -10,7 +10,7 @@
 #include "kagen/definitions.h"
 #include "kagen/external_memory_facade.h"
 #include "kagen/in_memory_facade.h"
-#include "kagen_communicator.h"
+#include "Communicatorunicator.h"
 
 #include "CLI11.h"
 #include <iostream>
@@ -553,7 +553,7 @@ int main(int argc, char* argv[]) {
     CLI::App         app("KaGen: Karlsruhe Graph Generator");
     SetupCommandLineArguments(app, config);
     CLI11_PARSE(app, argc, argv);
-    KAGEN_Comm comm;
+CommInterface comm;
     // Coordinates output format implies --coordinates
     if (std::find(config.output_graph.formats.begin(), config.output_graph.formats.end(), FileFormat::COORDINATES)
         != config.output_graph.formats.end()) {

@@ -15,11 +15,12 @@ enum class CommunicatorType {
 }
 
 
-CommInterface getMPICommunicator() {
+Communicator getMPICommunicator() {
     Communicator comm = MPI_Communicator();
     int rank; 
     MPI_Comm_rank(&rank);
     CommInterface interface = CommInterface(rank, comm);
+    return comm;
 }
 
 

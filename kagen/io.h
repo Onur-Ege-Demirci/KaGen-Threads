@@ -40,7 +40,7 @@ struct GraphFragment {
 GraphFragment ReadGraphFragment(
     GraphReader& reader, GraphRepresentation representation, const InputGraphConfig& config, PEID rank, PEID size);
 
-Graph FinalizeGraphFragment(GraphFragment fragment, bool output, Communicator comm);
+Graph FinalizeGraphFragment(GraphFragment fragment, bool output, CommInterface comm);
 
 void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, bool output, MPI_Comm comm);
 } // namespace kagen

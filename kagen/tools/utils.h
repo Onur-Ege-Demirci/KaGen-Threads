@@ -32,13 +32,13 @@ inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, MPI_Comm comm)
     return n + 1;
 }
 
-inline PEID GetCommRank(KAGEN_Comm comm) {
+inline PEID GetCommRank(CommInterface comm) {
     PEID rank;
     comm.world_rank(&rank);
     return rank;
 }
 
-inline PEID GetCommSize(KAGEN_Comm comm) {
+inline PEID GetCommSize(CommInterface comm) {
     PEID size;
     comm.world_size(&size);
     return size;
@@ -85,13 +85,14 @@ inline PEID FindPEInRangeWithBinarySearch(const SInt node, const std::vector<Ver
     return -1;
 }
 
-inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_range, MPI_Comm comm) {
+inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_range, CommInterface comm) {
     int rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetRank(&rank);
+    comm.GetSize(&size);
 
     std::vector<VertexRange> ranges(static_cast<std::size_t>(size));
     ranges[static_cast<std::size_t>(rank)] = vertex_range;
+    //TODO_O consider null.
     MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, ranges.data(), sizeof(VertexRange), MPI_BYTE, comm);
 
     return ranges;
@@ -99,10 +100,10 @@ inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_ra
 
 template <typename T>
 std::vector<T> ExchangeMessageBuffers(
-    std::unordered_map<PEID, std::vector<T>> message_buffers, MPI_Datatype mpi_datatype, MPI_Comm comm) {
+    std::unordered_map<PEID, std::vector<T>> message_buffers, MPI_Datatype mpi_datatype, CommInterface comm) {
     PEID rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetRank(&rank);
+    comm.GetSize(&size);
     std::vector<T>   send_buf;
     std::vector<T>   recv_buf;
     std::vector<int> send_counts(size);
@@ -115,7 +116,8 @@ std::vector<T> ExchangeMessageBuffers(
 
     std::exclusive_scan(send_counts.begin(), send_counts.end(), send_displs.begin(), 0);
     const std::size_t total_send_count = send_displs.back() + send_counts.back();
-    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
+    comm.Alltoall(ConstBufferRef(send_counts.data(), send_counts.size(), typeid(int)), BufferRef(recv_counts.data(), recv_counts.size(), typeid(int)));
+    //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
     const std::size_t total_recv_count = recv_displs.back() + recv_counts.back();
     send_buf.reserve(total_send_count);

@@ -9,8 +9,8 @@ class CommInterface {
     public:
        
         CommInterface(PEID rank, Communicator* comm);
-        int getRank();
-        int getSize();
+        int GetRank(int*);
+        int GetSize(int*);
         void Barrier();
         void Abort(int code);
         void Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root);
