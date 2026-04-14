@@ -240,7 +240,7 @@ private:
   std::vector<::testing::TestPartResult> result_vector;
 
   int UpdateCommState() {
-    int flag = MPI_Comm_rank(comm, &rank);
+    int flag = MPI_World_rank(comm, &rank);
     if (flag != MPI_SUCCESS) {
       return flag;
     }

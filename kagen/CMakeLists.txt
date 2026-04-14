@@ -25,8 +25,12 @@ add_library(KaGen ${KAGEN_SOURCE_FILES})
 target_compile_features(KaGen PRIVATE cxx_std_17)
 target_link_libraries(KaGen PUBLIC ${KAGEN_LINK_LIBRARIES})
 target_include_directories(KaGen PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>)
+target_include_directories(KaGen PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/communicators
+)
 target_include_directories(KaGen PRIVATE ${KAGEN_INCLUDE_DIRS})
 target_compile_options(KaGen PRIVATE ${KAGEN_WARNING_FLAGS})
-
+target_sources(KaGen PRIVATE ${COMMUNICATOR_SOURCES})
 # Allow library users to include kagen.h without kagen/ prefix
 target_include_directories(KaGen INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+add_subdirectory(communicators)

@@ -18,9 +18,9 @@ protected:
 
     void GenerateCSR() final;
 
-    void FinalizeEdgeList(MPI_Comm comm) final;
+    void FinalizeEdgeList(CommInterface comm) final;
 
-    void FinalizeCSR(MPI_Comm comm) final;
+    void FinalizeCSR(CommInterface comm) final;
 
 private:
     void GenerateImpl(GraphRepresentation representation);

@@ -16,7 +16,7 @@ namespace {
 void GenerateRandomWeights(
     const VertexWeightConfig& config, VertexRange vertex_range, CommInterface comm, VertexWeights& vertex_weights) {
     PEID rank;
-    comm.world_rank(&rank);
+    comm.GetRank(&rank);
     std::mt19937                         gen((rank + 42) * 3);
     std::uniform_int_distribution<SSInt> weight_dist(config.weight_range_begin, config.weight_range_end - 1);
     const size_t                         num_vertices = vertex_range.second - vertex_range.first;

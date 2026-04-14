@@ -1,6 +1,7 @@
+
 #include "communicator_interface.h"
-#include "kagen.h"
-#include "mpi_communicator.h"
+#include "./../kagen.h"
+#include "communicator.h"
 
 #include <vector>
 #include <thread>

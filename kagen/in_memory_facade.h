@@ -2,7 +2,7 @@
 
 #include "kagen/context.h"
 #include "kagen/kagen.h"
-#include "kagen/Communicatorunicator.h"
+#include "kagen/communicators/communicator_interface.h"
 
 namespace kagen {
 void  GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm);

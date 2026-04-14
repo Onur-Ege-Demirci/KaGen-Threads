@@ -3,7 +3,7 @@
 #include "kagen/context.h"
 #include "kagen/edgeweight_generators/edge_weight_generator.h"
 #include "kagen/kagen.h"
-#include "kagen/communicators/communicator.h"
+#include "kagen/communicators/communicator_interface.h"
 
 namespace kagen {
 /*!

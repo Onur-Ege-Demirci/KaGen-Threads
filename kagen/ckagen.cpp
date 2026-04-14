@@ -349,5 +349,6 @@ void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, Com
     dist[rank + 1] = result->result_ptr->vertex_range.second;
 
     //TODO_O potential problem here. 
-    comm.Allgather(inplace, BufferRef(dist + 1, 1, &typeid(unsigned long long)), CommOp::SUM, 0);
+    comm.Allgather(inplace, dist + 1, 1, typeid(unsigned long long), CommOp::SUM, 0);
+    //comm.Allgather(inplace, BufferRef(dist + 1, 1, &typeid(unsigned long long)), CommOp::SUM, 0);
 }

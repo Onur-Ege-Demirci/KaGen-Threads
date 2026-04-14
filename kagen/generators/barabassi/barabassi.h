@@ -28,7 +28,7 @@ public:
 protected:
     void GenerateEdgeList() final;
 
-    void FinalizeEdgeList(MPI_Comm comm) final;
+    void FinalizeEdgeList(CommInterface comm) final;
 
 private:
     // Config

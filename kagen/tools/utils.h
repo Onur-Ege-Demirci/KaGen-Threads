@@ -7,6 +7,7 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <typeinfo>
 
 namespace kagen {
 template <typename T>
@@ -23,24 +24,24 @@ inline std::pair<SInt, SInt> ComputeRange(const SInt n, const PEID size, const P
     return {from, to};
 }
 
-inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, MPI_Comm comm) {
+inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, CommInterface comm) {
     SInt n = 0;
     for (const auto& [u, v]: edges) {
         n = std::max(n, std::max(u, v));
     }
-    MPI_Allreduce(MPI_IN_PLACE, &n, 1, KAGEN_MPI_SINT, MPI_MAX, comm);
+    comm.Allreduce(inplace, &n, 1, typeid(SInt), CommOp::MAX);
     return n + 1;
 }
 
 inline PEID GetCommRank(CommInterface comm) {
     PEID rank;
-    comm.world_rank(&rank);
+    comm.GetRank(&rank);
     return rank;
 }
 
 inline PEID GetCommSize(CommInterface comm) {
     PEID size;
-    comm.world_size(&size);
+    comm.GetSize(&size);
     return size;
 }
 
@@ -116,7 +117,7 @@ std::vector<T> ExchangeMessageBuffers(
 
     std::exclusive_scan(send_counts.begin(), send_counts.end(), send_displs.begin(), 0);
     const std::size_t total_send_count = send_displs.back() + send_counts.back();
-    comm.Alltoall(ConstBufferRef(send_counts.data(), send_counts.size(), typeid(int)), BufferRef(recv_counts.data(), recv_counts.size(), typeid(int)));
+    comm.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
     //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
     const std::size_t total_recv_count = recv_displs.back() + recv_counts.back();
@@ -129,6 +130,7 @@ std::vector<T> ExchangeMessageBuffers(
         message_buffers[i].resize(0);
     }
     recv_buf.resize(total_recv_count);
+    
     MPI_Alltoallv(
         send_buf.data(), send_counts.data(), send_displs.data(), mpi_datatype, recv_buf.data(), recv_counts.data(),
         recv_displs.data(), mpi_datatype, comm);

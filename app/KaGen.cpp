@@ -8,9 +8,9 @@
  ******************************************************************************/
 #include "kagen/context.h"
 #include "kagen/definitions.h"
-#include "kagen/external_memory_facade.h"
 #include "kagen/in_memory_facade.h"
-#include "Communicatorunicator.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/communicator.h"
 
 #include "CLI11.h"
 #include <iostream>
@@ -546,14 +546,13 @@ void apply_size_and_rank_threads(PEID *size, PEID *rank, PEID thread_count, PEID
 int main(int argc, char* argv[]) {
 
     //TODO_O spawn threads here instead of comm
-    //TODO_O user is responsible for building the interface and spawning the threads, giving them the correct interface. 
     //TODO_O add parameter parsing to the app. Maybe not?  
     // Parse parameters
     PGeneratorConfig config;
     CLI::App         app("KaGen: Karlsruhe Graph Generator");
     SetupCommandLineArguments(app, config);
     CLI11_PARSE(app, argc, argv);
-CommInterface comm;
+    CommInterface comm;
     // Coordinates output format implies --coordinates
     if (std::find(config.output_graph.formats.begin(), config.output_graph.formats.end(), FileFormat::COORDINATES)
         != config.output_graph.formats.end()) {

@@ -105,7 +105,7 @@ TEST_P(ParhipReadWriteTestFixture, default_write_read_in_parhip_format) {
     MPI_Comm                   comm = MPI_COMM_WORLD;
     int                        rank, size;
     MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetSize(&size);
 
     // setup
     kagen::KaGen generator(comm);
@@ -145,7 +145,7 @@ TEST_P(ParhipReadWriteTestFixture, write_from_csr_read_in_parhip_format) {
     MPI_Comm                   comm = MPI_COMM_WORLD;
     int                        rank, size;
     MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetSize(&size);
 
     // setup
     kagen::KaGen generator(comm);
@@ -187,7 +187,7 @@ TEST_P(ParhipReadWriteTestFixture, write_from_csr_read_in_parhip_format_32bit_ed
     MPI_Comm                   comm = MPI_COMM_WORLD;
     int                        rank, size;
     MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetSize(&size);
 
     // setup
     kagen::KaGen generator(comm);

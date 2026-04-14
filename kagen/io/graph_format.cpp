@@ -6,22 +6,24 @@
 #include <mpi.h>
 
 namespace kagen {
-GraphInfo::GraphInfo(const Graph& graph, MPI_Comm comm)
+GraphInfo::GraphInfo(const Graph& graph, CommInterface comm)
     : local_n(graph.NumberOfLocalVertices()),
       local_m(graph.NumberOfLocalEdges()),
       global_n(graph.NumberOfLocalVertices()),
       global_m(graph.NumberOfLocalEdges()),
       has_vertex_weights(!graph.vertex_weights.empty()),
       has_edge_weights(!graph.edge_weights.empty()) {
-    MPI_Allreduce(MPI_IN_PLACE, &global_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
-    MPI_Allreduce(MPI_IN_PLACE, &global_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+    comm.Allreduce(inplace, &global_n, 1, typeid(SInt), CommOp::SUM);
+    comm.Allreduce(inplace, &global_m, 1, typeid(SInt), CommOp::SUM);
+    //MPI_Allreduce(MPI_IN_PLACE, &global_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+    //MPI_Allreduce(MPI_IN_PLACE, &global_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Exscan(&local_n, &offset_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Exscan(&local_m, &offset_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Allreduce(MPI_IN_PLACE, &has_vertex_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
     MPI_Allreduce(MPI_IN_PLACE, &has_edge_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
 }
 
-GraphInfo::GraphInfo(const GraphInfo& local, MPI_Comm comm)
+GraphInfo::GraphInfo(const GraphInfo& local, CommInterface comm)
     : local_n(local.local_n),
       local_m(local.local_m),
       global_n(local.global_n),
@@ -30,6 +32,8 @@ GraphInfo::GraphInfo(const GraphInfo& local, MPI_Comm comm)
       has_edge_weights(local.has_edge_weights) {
     MPI_Allreduce(&local_n, &global_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Allreduce(&local_m, &global_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+    
+    //TODO_O
     MPI_Exscan(&local_n, &offset_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Exscan(&local_m, &offset_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Allreduce(MPI_IN_PLACE, &has_vertex_weights, 1, MPI_C_BOOL, MPI_LOR, comm);

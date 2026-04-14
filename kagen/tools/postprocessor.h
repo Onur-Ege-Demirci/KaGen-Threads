@@ -16,7 +16,7 @@ namespace kagen {
  * @param vertex_range The vertex range assigned to this PE.
  * @param comm The MPI communicator.
  */
-void AddNonlocalReverseEdges(Edgelist& edge_list, EdgeWeights& edge_weights, VertexRange vertex_range, MPI_Comm comm);
+void AddNonlocalReverseEdges(Edgelist& edge_list, EdgeWeights& edge_weights, VertexRange vertex_range, CommInterface comm);
 
 /**
  * @brief Redistributes the edges such that each PE owns the edges that it should owned due to the given vertex range.
@@ -26,7 +26,7 @@ void AddNonlocalReverseEdges(Edgelist& edge_list, EdgeWeights& edge_weights, Ver
  * @param use_binary_search If true, use binary search for PE lookup (faster for many PEs).
  */
 void RedistributeEdgesByVertexRange(
-    Edgelist& edge_list, VertexRange vertex_range, MPI_Comm comm, bool use_binary_search = false);
+    Edgelist& edge_list, VertexRange vertex_range, CommInterface comm, bool use_binary_search = false);
 
 /**
  * @brief Redistributes the edges such that each PE owns a contiguous range of vertices.
@@ -41,7 +41,7 @@ void RedistributeEdgesByVertexRange(
  * @param comm The MPI communicator.
  * @return The vertex range assigned to this PE.
  */
-VertexRange RedistributeEdges(Edgelist& source, Edgelist& destination, SInt n, bool remap_round_robin, MPI_Comm comm);
+VertexRange RedistributeEdges(Edgelist& source, Edgelist& destination, SInt n, bool remap_round_robin, CommInterface comm);
 
 /**
  * @brief Computes a balanced vertex distribution where each PE gets n/p consecutive vertices.
@@ -51,7 +51,7 @@ VertexRange RedistributeEdges(Edgelist& source, Edgelist& destination, SInt n, b
  * @param comm The MPI communicator.
  * @return The vertex distribution array (size + 1 entries): [0, n0, n0+n1, ..., n].
  */
-std::vector<SInt> ComputeBalancedVertexDistribution(SInt n, MPI_Comm comm);
+std::vector<SInt> ComputeBalancedVertexDistribution(SInt n, CommInterface comm);
 
 /**
  * @brief Remaps vertex IDs using a round-robin assignment and returns the resulting vertex distribution.
@@ -61,7 +61,7 @@ std::vector<SInt> ComputeBalancedVertexDistribution(SInt n, MPI_Comm comm);
  * @param comm The MPI communicator.
  * @return The vertex distribution array (size + 1 entries).
  */
-std::vector<SInt> RoundRobinRemapping(Edgelist& edges, SInt n, MPI_Comm comm);
+std::vector<SInt> RoundRobinRemapping(Edgelist& edges, SInt n, CommInterface comm);
 
 /**
  * @brief Redistributes edges to balance the number of edges per PE.
@@ -79,5 +79,5 @@ std::vector<SInt> RoundRobinRemapping(Edgelist& edges, SInt n, MPI_Comm comm);
  * @return The vertex range assigned to this PE after redistribution.
  */
 VertexRange
-RedistributeEdgesBalanced(Edgelist& source, Edgelist& destination, SInt n, bool remap_round_robin, MPI_Comm comm);
+RedistributeEdgesBalanced(Edgelist& source, Edgelist& destination, SInt n, bool remap_round_robin, CommInterface comm);
 } // namespace kagen

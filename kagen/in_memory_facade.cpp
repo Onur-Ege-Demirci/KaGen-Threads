@@ -7,7 +7,7 @@
 #include "kagen/io.h"
 #include "kagen/tools/statistics.h"
 #include "kagen/tools/validator.h"
-#include "kagen/Communicatorunicator.h"
+#include "kagen/communicators/communicator.h"
 
 
 
@@ -43,7 +43,6 @@ void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm) {
         GraphInfo info(graph, comm);
         auto      writer = factory->CreateWriter(config.output_graph, graph, info, rank, size);
         if (writer != nullptr) {
-            //TODO_O
             WriteGraph(*writer.get(), config.output_graph, rank == ROOT && !config.quiet, comm);
         } else if (!config.quiet && rank == ROOT) {
             std::cout << "Warning: invalid file format " << format << " for writing; skipping\n";
@@ -63,8 +62,8 @@ void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm) {
 Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, CommInterface comm) {
 
     PEID size, rank;
-    comm.initialize_size(&size, &rank);
-
+    comm.GetSize(&size);
+    comm.GetRank(&rank);
     const bool output_error = rank == ROOT;
     const bool output_info  = rank == ROOT && !config_template.quiet;
 
@@ -87,6 +86,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
     if (output_info) {
         std::cout << "Generating graph ... " << std::flush;
     }
+
 
     const auto t_start_graphgen = comm.getTime();
 
@@ -147,9 +147,9 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         if (output_info) {
             std::cout << "Validating graph ... " << std::flush;
         }
-        //TODO_O oh god 2 
+        
         bool success = ValidateGraph(graph, config.self_loops, config.directed, false, comm);
-        comm.AllReduce(inplace_t, &success, 1, KAGEN_OP.LOR)
+        comm.Allreduce(inplace, &success, 1, typeid(bool), CommOp::LOR);
         if (!success) {
             if (output_error) {
                 std::cerr << "Error: graph validation failed\n";

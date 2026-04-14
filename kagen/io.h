@@ -42,5 +42,5 @@ GraphFragment ReadGraphFragment(
 
 Graph FinalizeGraphFragment(GraphFragment fragment, bool output, CommInterface comm);
 
-void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, bool output, MPI_Comm comm);
+void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, bool output, CommInterface comm);
 } // namespace kagen

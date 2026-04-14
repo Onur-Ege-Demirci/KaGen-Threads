@@ -11,7 +11,7 @@
 namespace kagen {
 class StreamingGenerator {
 public:
-    StreamingGenerator(const std::string& options, PEID chunks_per_pe, MPI_Comm comm);
+    StreamingGenerator(const std::string& options, PEID chunks_per_pe, CommInterface& comm);
 
     [[nodiscard]] VertexRange EstimateVertexRange(PEID pe = -1) const;
 
@@ -33,7 +33,7 @@ private:
 
     PEID     rank_;
     PEID     size_;
-    MPI_Comm comm_;
+    CommInterface comm_;
 
     bool initialized_ = false;
 

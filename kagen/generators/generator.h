@@ -15,17 +15,17 @@ public:
 
     Generator* Generate(GraphRepresentation representation);
 
-    void GenerateEdgeWeights(EdgeWeightConfig weight_config, MPI_Comm comm);
+    void GenerateEdgeWeights(EdgeWeightConfig weight_config, CommInterface comm);
 
-    void GenerateVertexWeights(VertexWeightConfig weight_config, MPI_Comm comm);
+    void GenerateVertexWeights(VertexWeightConfig weight_config, CommInterface comm);
 
-    Generator* Finalize(MPI_Comm comm);
+    Generator* Finalize(CommInterface comm);
 
     SInt GetNumberOfEdges() const;
 
     Graph Take();
 
-    virtual void PermuteVertices(const PGeneratorConfig& config, MPI_Comm comm);
+    virtual void PermuteVertices(const PGeneratorConfig& config, CommInterface comm);
 
     Edgelist TakeNonlocalEdges();
 
@@ -34,9 +34,9 @@ protected:
 
     virtual void GenerateCSR() = 0;
 
-    virtual void FinalizeEdgeList(MPI_Comm comm);
+    virtual void FinalizeEdgeList(CommInterface comm);
 
-    virtual void FinalizeCSR(MPI_Comm comm);
+    virtual void FinalizeCSR(CommInterface comm);
 
     void SetVertexRange(VertexRange vetrex_range);
 
@@ -93,13 +93,13 @@ private:
 class EdgeListOnlyGenerator : virtual Generator {
 public:
     void GenerateCSR() final;
-    void FinalizeCSR(MPI_Comm comm) final;
+    void FinalizeCSR(CommInterface comm) final;
 };
 
 class CSROnlyGenerator : virtual Generator {
 public:
     void GenerateEdgeList() final;
-    void FinalizeEdgeList(MPI_Comm comm) final;
+    void FinalizeEdgeList(CommInterface comm) final;
 };
 
 class GeneratorFactory {

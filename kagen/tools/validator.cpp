@@ -11,10 +11,10 @@
 
 namespace kagen {
 
-bool ValidateVertexRanges(const Edgelist& edge_list, const VertexRange vertex_range, MPI_Comm comm) {
+bool ValidateVertexRanges(const Edgelist& edge_list, const VertexRange vertex_range, CommInterface& comm) {
     int rank, size;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &size);
+    comm.GetSize(&size);
+    comm.GetRank(&rank);
 
     const auto ranges = AllgatherVertexRange(vertex_range, comm);
 
@@ -66,7 +66,7 @@ bool ValidateVertexRanges(const Edgelist& edge_list, const VertexRange vertex_ra
 
 bool ValidateGraph(
     Graph& graph, const bool allow_self_loops, const bool allow_directed_graphs, const bool allow_multi_edges,
-    MPI_Comm comm) {
+    CommInterface& comm) {
     // Validation in CSR representation is currently not implemented, so we convert to it to edge list
     if (graph.representation == GraphRepresentation::CSR) {
         graph.edges       = BuildEdgeListFromCSR(graph.vertex_range, graph.xadj, graph.adjncy);
@@ -136,7 +136,7 @@ bool ValidateGraph(
     // Precompute offset for each node
     if (!allow_directed_graphs) {
         int rank;
-        MPI_Comm_rank(comm, &rank);
+        comm.GetRank(&rank);
         const auto [from, to] = ranges[rank];
 
         std::vector<SInt> node_offset(to - from + 1);
@@ -160,7 +160,7 @@ bool ValidateGraph(
 
         // Check that there are reverse edges for edges across PEs
         int size;
-        MPI_Comm_size(comm, &size);
+        comm.GetSize(&size);
 
         std::vector<std::vector<SInt>> message_buffers(size);
         for (const auto& [u, v, weight]: sorted_edges) {
@@ -197,9 +197,11 @@ bool ValidateGraph(
         }
 
         recv_buf.resize(total_recv_count);
-        MPI_Alltoallv(
-            send_buf.data(), send_counts.data(), send_displs.data(), MPI_UINT64_T, recv_buf.data(), recv_counts.data(),
-            recv_displs.data(), MPI_UINT64_T, comm);
+        comm.AlltoallV(send_buf.data(), send_counts.data(), send_displs.data(), typeid(SInt), recv_buf.data(), recv_counts.data(),
+                       recv_displs.data(), typeid(SInt));
+        //MPI_Alltoallv(
+          //  send_buf.data(), send_counts.data(), send_displs.data(), MPI_UINT64_T, recv_buf.data(), recv_counts.data(),
+            //recv_displs.data(), MPI_UINT64_T, comm);
 
         for (std::size_t i = 0; i < recv_buf.size(); i += 3) {
             const SInt  u      = recv_buf[i];
@@ -222,18 +224,18 @@ bool ValidateGraph(
 
 bool ValidateGraphInplace(
     Graph& graph, const bool allow_self_loops, const bool allow_directed_graphs, const bool allow_multi_edges,
-    MPI_Comm comm) {
+    CommInterface comm) {
     if (graph.representation == GraphRepresentation::CSR) {
         std::cerr << "not implemented";
-        MPI_Abort(comm, 1);
+        comm.abort(1);
     }
     if (!graph.vertex_weights.empty()) {
         std::cerr << "not implemented";
-        MPI_Abort(comm, 1);
+        comm.abort(1);
     }
     if (!graph.edge_weights.empty()) {
         std::cerr << "not implemented";
-        MPI_Abort(comm, 1);
+        comm.abort(1);
     }
 
     auto& edges        = graph.edges;
@@ -273,7 +275,7 @@ bool ValidateGraphInplace(
     // Precompute offset for each node
     if (!allow_directed_graphs) {
         int rank;
-        MPI_Comm_rank(comm, &rank);
+        comm.GetRank(&rank);
         const auto [from, to] = ranges[rank];
 
         std::vector<SInt> node_offset(to - from + 1);
@@ -297,7 +299,8 @@ bool ValidateGraphInplace(
 
         // Check that there are reverse edges for edges across PEs
         int size;
-        MPI_Comm_size(comm, &size);
+        comm.GetSize(&size);
+
 
         std::vector<std::vector<SInt>> message_buffers(size);
         for (const auto& [u, v]: edges) {

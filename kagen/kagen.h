@@ -13,6 +13,7 @@
     #include <vector>
 #endif
 
+#include "kagen/communicators/communicator_interface.h"
 #include <mpi.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -288,7 +289,7 @@ private:
 
 class KaGen {
 public:
-    KaGen(CommInterface comm);
+    KaGen(CommInterface);
 
     KaGen(const KaGen&) = delete;
     KaGen(KaGen&&) noexcept;
@@ -497,7 +498,7 @@ public:
 private:
     void SetDefaults();
 
-    CommInterface                                 comm_;
+    CommInterface                            comm_;
     std::unique_ptr<struct PGeneratorConfig> config_;
     GraphRepresentation                      representation_;
 };
@@ -515,7 +516,7 @@ private:
  * @return Vertex distribution as described above.
  */
 template <typename IDX>
-std::vector<IDX> BuildVertexDistribution(const Graph& graph, MPI_Datatype idx_mpi_type, MPI_Comm comm) {
+std::vector<IDX> BuildVertexDistribution(const Graph& graph, MPI_Datatype idx_mpi_type, CommInterface& comm) {
     PEID rank, size;
     comm.GetRank(&rank);
     comm.GetSize(&size);
@@ -649,7 +650,7 @@ public:
      * @param comm The CommInterface to be used.
      * @param sequential tells KaGen to use one single PE
      */
-    sKaGen(const std::string& options, PEID chunks_per_pe, MPI_Comm comm);
+    sKaGen(const std::string& options, PEID chunks_per_pe, CommInterface& comm);
 
     ~sKaGen();
 
@@ -717,7 +718,7 @@ typedef struct {
 extern "C" {
 #endif
 
-kagen_obj* kagen_create(MPI_Comm comm);
+kagen_obj* kagen_create(CommInterface comm);
 void       kagen_free(kagen_obj* gen);
 
 void          kagen_graph_vertex_range(kagen_graph* result, kagen_index* begin, kagen_index* end);
@@ -786,7 +787,7 @@ kagen_graph* kagen_generate_rmat(
     kagen_obj* gen, unsigned long long n, unsigned long long m, double a, double b, double c, bool directed,
     bool self_loops);
 
-void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, MPI_Comm comm);
+void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, CommInterface comm);
 
 #ifdef __cplusplus
 }

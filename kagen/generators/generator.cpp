@@ -15,7 +15,8 @@
 #include "kagen/vertexweight_generators/voiding_generator.h"
 
 
-#include "kagen/Communicatorunicator.h"
+#include "kagen/communicators/communicator.h"
+#include "kagen/communicators/communicator_interface.h"
 #include <mpi.h>
 
 #include <algorithm>
@@ -62,7 +63,7 @@ Generator* Generator::Finalize(CommInterface comm) {
 }
 
 std::unique_ptr<kagen::EdgeWeightGenerator>
-CreateEdgeWeightGenerator(const EdgeWeightConfig weight_config, MPI_Comm comm, const VertexRange vertex_range) {
+CreateEdgeWeightGenerator(const EdgeWeightConfig weight_config, CommInterface comm, const VertexRange vertex_range) {
     switch (weight_config.generator_type) {
         case EdgeWeightGeneratorType::DEFAULT:
             return std::make_unique<DefaultEdgeWeightGenerator>(weight_config);
@@ -79,7 +80,7 @@ CreateEdgeWeightGenerator(const EdgeWeightConfig weight_config, MPI_Comm comm, c
     throw std::runtime_error("invalid weight generator type");
 }
 
-void Generator::GenerateEdgeWeights(EdgeWeightConfig weight_config, MPI_Comm comm) {
+void Generator::GenerateEdgeWeights(EdgeWeightConfig weight_config, CommInterface comm) {
     std::unique_ptr<kagen::EdgeWeightGenerator> edge_weight_generator =
         CreateEdgeWeightGenerator(weight_config, comm, graph_.vertex_range);
 
@@ -294,7 +295,6 @@ void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config,
     int rank = -1;
     comm.GetRank(&rank);
     comm.GetSize(&size);
-    MPI_Comm_size(comm, &size);
 
     auto permutator = random_permutation::FeistelPseudoRandomPermutation::buildPermutation(config.n - 1, 0);
     auto permute    = [&permutator](SInt v) {
@@ -371,9 +371,9 @@ void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, CommInte
     }
 }
 
-void Generator::FinalizeEdgeList(Communicator) {}
+void Generator::FinalizeEdgeList(CommInterface) {}
 
-void Generator::FinalizeCSR(Communicator) {}
+void Generator::FinalizeCSR(CommInterface) {}
 
 void CSROnlyGenerator::GenerateEdgeList() {
     GenerateCSR();

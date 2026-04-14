@@ -3,6 +3,7 @@
 #include "kagen/definitions.h"
 #include "kagen/factories.h"
 #include "kagen/tools/utils.h"
+#include "kagen/communicators/communicator_interface.h"
 
 #include <mpi.h>
 
@@ -11,12 +12,12 @@
 #include <numeric>
 
 namespace kagen {
-StreamingGenerator::StreamingGenerator(const std::string& options, const PEID chunks_per_pe, MPI_Comm comm)
+StreamingGenerator::StreamingGenerator(const std::string& options, const PEID chunks_per_pe, CommInterface& comm)
     : config_(CreateConfigFromString(options)),
       comm_(comm),
       factory_(CreateGeneratorFactory(config_.generator)) {
-    MPI_Comm_size(comm_, &size_);
-    MPI_Comm_rank(comm_, &rank_);
+    comm_.GetSize(&size_);
+    comm_.GetRank(&rank_);
 
     const PEID streaming_size = chunks_per_pe * size_;
     const PEID streaming_rank = chunks_per_pe * rank_;
@@ -101,14 +102,19 @@ void StreamingGenerator::Initialize() {
                 std::cout << "." << std::flush;
             }
         }
-
-        MPI_Allreduce(MPI_IN_PLACE, &max_nonlocal_edges, 1, KAGEN_MPI_SINT, MPI_MAX, comm_);
-        MPI_Allreduce(MPI_IN_PLACE, &num_nonlocal_edges, 1, KAGEN_MPI_SINT, MPI_SUM, comm_);
-        MPI_Allreduce(MPI_IN_PLACE, &num_local_edges, 1, KAGEN_MPI_SINT, MPI_SUM, comm_);
-        MPI_Allreduce(MPI_IN_PLACE, &max_local_edges, 1, KAGEN_MPI_SINT, MPI_MAX, comm_);
+        
+        comm_.Allreduce(inplace, &max_nonlocal_edges, 1, typeid(SInt), CommOp::MAX);
+        comm_.Allreduce(inplace, &num_nonlocal_edges, 1, typeid(SInt), CommOp::SUM);
+        comm_.Allreduce(inplace, &num_local_edges, 1, typeid(SInt), CommOp::SUM);
+        comm_.Allreduce(inplace, &max_local_edges, 1, typeid(SInt), CommOp::MAX);
+        //MPI_Allreduce(MPI_IN_PLACE, &max_nonlocal_edges, 1, KAGEN_MPI_SINT, MPI_MAX, comm_);
+        //MPI_Allreduce(MPI_IN_PLACE, &num_nonlocal_edges, 1, KAGEN_MPI_SINT, MPI_SUM, comm_);
+        //MPI_Allreduce(MPI_IN_PLACE, &num_local_edges, 1, KAGEN_MPI_SINT, MPI_SUM, comm_);
+        //MPI_Allreduce(MPI_IN_PLACE, &max_local_edges, 1, KAGEN_MPI_SINT, MPI_MAX, comm_);
 
         vertex_distribution_[rank_]     = my_vertex_ranges_.front().first;
         vertex_distribution_[rank_ + 1] = my_vertex_ranges_.back().second;
+        //TODO_O Null
         MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vertex_distribution_.data() + 1, 1, KAGEN_MPI_SINT, comm_);
 
         if (rank_ == ROOT && !config_.quiet) {
@@ -165,8 +171,8 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
 
     std::vector<int> recv_counts(size_);
     std::vector<int> recv_displs(size_);
-
-    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm_);
+    comm_.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
+    //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm_);
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
 
     MPI_Datatype sint_pair = MPI_DATATYPE_NULL;
@@ -174,6 +180,7 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
     MPI_Type_commit(&sint_pair);
 
     Edgelist recv_bufs(recv_displs.back() + recv_counts.back());
+    //TODO_O add support for sint_pair as well as whatever all these type operations do ^ v
     MPI_Alltoallv(
         send_bufs.data(), send_counts.data(), send_displs.data(), sint_pair, recv_bufs.data(), recv_counts.data(),
         recv_displs.data(), sint_pair, comm_);
