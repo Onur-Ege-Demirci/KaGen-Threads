@@ -93,7 +93,7 @@ inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_ra
 
     std::vector<VertexRange> ranges(static_cast<std::size_t>(size));
     ranges[static_cast<std::size_t>(rank)] = vertex_range;
-    //TODO_O consider null.
+    //TODO_O consider pairs.
     MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, ranges.data(), sizeof(VertexRange), MPI_BYTE, comm);
 
     return ranges;

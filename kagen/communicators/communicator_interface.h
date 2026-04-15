@@ -7,7 +7,7 @@ class CommInterface {
         int rank;
         Communicator* comm;
     public:
-       
+        
         CommInterface(int rank, Communicator* comm);
         void GetRank(int*);
         void GetSize(int*);

@@ -114,8 +114,8 @@ void StreamingGenerator::Initialize() {
 
         vertex_distribution_[rank_]     = my_vertex_ranges_.front().first;
         vertex_distribution_[rank_ + 1] = my_vertex_ranges_.back().second;
-        //TODO_O Null
-        MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vertex_distribution_.data() + 1, 1, KAGEN_MPI_SINT, comm_);
+        comm_.Allgather(inplace, vertex_distribution_.data() + 1, 1, typeid(SInt));
+        //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vertex_distribution_.data() + 1, 1, KAGEN_MPI_SINT, comm_);
 
         if (rank_ == ROOT && !config_.quiet) {
             std::cout << std::endl;

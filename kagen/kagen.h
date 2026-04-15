@@ -528,7 +528,9 @@ std::vector<IDX> BuildVertexDistribution(const Graph& graph, MPI_Datatype idx_mp
         distribution[rank + 1] = graph.vertex_range.second;
     }
 
-    MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, distribution.data() + 1, 1, idx_mpi_type, comm);
+    //TODO_O idx_mpi_type goddamnit
+    comm.Allgather(inplace, distribution.data() + 1, 1, idx_mpi_type);
+    //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, distribution.data() + 1, 1, idx_mpi_type, comm);
     if (distribution[0] == std::numeric_limits<IDX>::max()) {
         distribution[0] = 0;
     }

@@ -72,9 +72,11 @@ class MPI_Communicator : Communicator {
         void Allreduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
             MPI_Allreduce(MPI_IN_PLACE, recvbuf, count, getMPIType(type), getMPIOp(op), comm);
         }
-        void Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type, int root) override {
+        
+        void Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type) override {
             MPI_Allgather(sendbuf, sendcount, getMPIType(send_type), recvbuf, recvcount, getMPIType(recv_type), comm);
         }
+        
         void Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type) override {
             MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, recvbuf, recvcount, getMPIType(recv_type), comm);
         }
