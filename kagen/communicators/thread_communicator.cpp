@@ -34,7 +34,7 @@ class Thread_Communicator : Communicator {
 
         std::mutex reduce_mutex;
         std::condition_variable reduce_cv;
-        int threads_arrived = 0;
+        size_t threads_arrived = 0;
         
         template<typename T>
         static std::function<void(T*, const T*, size_t)> getOp(CommOp op) {
@@ -115,7 +115,7 @@ class Thread_Communicator : Communicator {
         }
         
         void flush_buffer() {
-            for (int i = 0; i < shared_reduce_buffer.size(); i++) {
+            for (size_t i = 0; i < shared_reduce_buffer.size(); i++) {
                 shared_reduce_buffer[i] = nullptr;
             }
         }
@@ -143,7 +143,7 @@ class Thread_Communicator : Communicator {
             *rank = thread_id_to_rank[thread_id];
         }
         ~Thread_Communicator() {
-            for (int i = 0; i < recv_buffers.size(); i++) { 
+            for (size_t i = 0; i < recv_buffers.size(); i++) { 
                 recv_buffers[i] = nullptr;
             } 
             flush_buffer();
@@ -291,7 +291,7 @@ class Thread_Communicator : Communicator {
         }
         //TODO_O The devil went down to Georgia....
         
-        void Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type, int root) override {
+        void Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type) override {
             int rank = getCurrentRank();
 
             size_t elem_size = type_sizes.at(std::type_index(recv_type));
@@ -412,7 +412,7 @@ class Thread_Communicator : Communicator {
                 } else {
                     reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
                     // Copy from root's buffer
-                    std::memcpy(buffer.data, shared_reduce_buffer[root].data, buffer.count * elem_size);
+                    std::memcpy(buffer, shared_reduce_buffer[root], count * elem_size);
                     threads_arrived--;
                     if (threads_arrived == 0) {
                         reduce_cv.notify_all();
@@ -479,7 +479,7 @@ void AlltoallV(const void* sendbuf, const int sendcounts[], const int sdispls[],
                             if (sendcounts[src * threads.size() + dst] > 0) {
                                 std::memcpy(
                                     static_cast<uint8_t*>(recv_buffers[dst]) + rdispls[src] * elem_size,
-                                    static_cast<uint8_t*>(shared_reduce_buffer[src]) + sdispls[src * threads.size() + dst] * elem_size,
+                                    static_cast<const uint8_t*>(shared_reduce_buffer[src]) + sdispls[src * threads.size() + dst] * elem_size,
                                     sendcounts[src * threads.size() + dst] * elem_size
                                 );
                             }

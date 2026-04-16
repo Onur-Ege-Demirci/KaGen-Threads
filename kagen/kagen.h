@@ -530,7 +530,6 @@ std::vector<IDX> BuildVertexDistribution(const Graph& graph, MPI_Datatype idx_mp
 
     //TODO_O idx_mpi_type goddamnit
     comm.Allgather(inplace, distribution.data() + 1, 1, idx_mpi_type);
-    //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, distribution.data() + 1, 1, idx_mpi_type, comm);
     if (distribution[0] == std::numeric_limits<IDX>::max()) {
         distribution[0] = 0;
     }
@@ -720,7 +719,7 @@ typedef struct {
 extern "C" {
 #endif
 
-kagen_obj* kagen_create(CommInterface comm);
+kagen_obj* kagen_create(CommInterface& comm);
 void       kagen_free(kagen_obj* gen);
 
 void          kagen_graph_vertex_range(kagen_graph* result, kagen_index* begin, kagen_index* end);
@@ -789,7 +788,7 @@ kagen_graph* kagen_generate_rmat(
     kagen_obj* gen, unsigned long long n, unsigned long long m, double a, double b, double c, bool directed,
     bool self_loops);
 
-void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, CommInterface comm);
+void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, CommInterface& comm);
 
 #ifdef __cplusplus
 }

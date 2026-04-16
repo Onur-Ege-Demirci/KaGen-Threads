@@ -107,15 +107,11 @@ void StreamingGenerator::Initialize() {
         comm_.Allreduce(inplace, &num_nonlocal_edges, 1, typeid(SInt), CommOp::SUM);
         comm_.Allreduce(inplace, &num_local_edges, 1, typeid(SInt), CommOp::SUM);
         comm_.Allreduce(inplace, &max_local_edges, 1, typeid(SInt), CommOp::MAX);
-        //MPI_Allreduce(MPI_IN_PLACE, &max_nonlocal_edges, 1, KAGEN_MPI_SINT, MPI_MAX, comm_);
-        //MPI_Allreduce(MPI_IN_PLACE, &num_nonlocal_edges, 1, KAGEN_MPI_SINT, MPI_SUM, comm_);
-        //MPI_Allreduce(MPI_IN_PLACE, &num_local_edges, 1, KAGEN_MPI_SINT, MPI_SUM, comm_);
-        //MPI_Allreduce(MPI_IN_PLACE, &max_local_edges, 1, KAGEN_MPI_SINT, MPI_MAX, comm_);
+    
 
         vertex_distribution_[rank_]     = my_vertex_ranges_.front().first;
         vertex_distribution_[rank_ + 1] = my_vertex_ranges_.back().second;
         comm_.Allgather(inplace, vertex_distribution_.data() + 1, 1, typeid(SInt));
-        //MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, vertex_distribution_.data() + 1, 1, KAGEN_MPI_SINT, comm_);
 
         if (rank_ == ROOT && !config_.quiet) {
             std::cout << std::endl;
@@ -172,7 +168,6 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
     std::vector<int> recv_counts(size_);
     std::vector<int> recv_displs(size_);
     comm_.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
-    //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm_);
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
 
     MPI_Datatype sint_pair = MPI_DATATYPE_NULL;
@@ -210,7 +205,7 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
 }
 
 std::unique_ptr<Generator> StreamingGenerator::CreateGenerator(const PEID chunk) {
-    return factory_->Create(config_, streaming_chunks_per_pe_ * rank_ + chunk, streaming_chunks_per_pe_ * size_);
+    return factory_->Create(config_, streaming_chunks_per_pe_ * rank_ + chunk, streaming_chunks_per_pe_ * size_, comm_);
 }
 
 StreamedGraph StreamingGenerator::Next() {

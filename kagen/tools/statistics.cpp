@@ -13,7 +13,7 @@
 
 namespace kagen {
 // First invalid node on the last PE is the number of nodes in the graph
-SInt FindNumberOfGlobalNodes(const VertexRange vertex_range, CommInterface comm) {
+SInt FindNumberOfGlobalNodes(const VertexRange vertex_range, CommInterface& comm) {
     PEID size;
     comm.GetSize(&size);
 
@@ -25,7 +25,7 @@ SInt FindNumberOfGlobalNodes(const VertexRange vertex_range, CommInterface comm)
 }
 
 // Length of all edge lists is the number of edges in the graph
-SInt FindNumberOfGlobalEdges(const Edgelist& edges, CommInterface comm) {
+SInt FindNumberOfGlobalEdges(const Edgelist& edges, CommInterface& comm) {
     SInt local_num_edges = edges.size();
     SInt global_num_edges;
     comm.Allreduce(&local_num_edges, &global_num_edges, 1, typeid(SInt), CommOp::SUM);
@@ -33,7 +33,7 @@ SInt FindNumberOfGlobalEdges(const Edgelist& edges, CommInterface comm) {
 }
 
 namespace {
-std::vector<SInt> GatherValue(const SInt value, CommInterface comm) {
+std::vector<SInt> GatherValue(const SInt value, CommInterface& comm) {
     PEID size;
     comm.GetSize(&size);
     std::vector<SInt> values(size);
@@ -43,23 +43,23 @@ std::vector<SInt> GatherValue(const SInt value, CommInterface comm) {
 }
 } // namespace
 
-std::vector<SInt> GatherNumberOfEdges(const Edgelist& edges, CommInterface comm) {
+std::vector<SInt> GatherNumberOfEdges(const Edgelist& edges, CommInterface& comm) {
     return GatherValue(edges.size(), comm);
 }
 
-SInt ReduceSum(const SInt value, CommInterface comm) {
+SInt ReduceSum(const SInt value, CommInterface& comm) {
     SInt sum = 0;
     comm.Reduce(&value, &sum, 1, typeid(SInt), CommOp::SUM, ROOT);
     return sum;
 }
 
-SInt ReduceMin(const SInt value, CommInterface comm) {
+SInt ReduceMin(const SInt value, CommInterface& comm) {
     SInt min = 0;
     comm.Reduce(&value, &min, 1, typeid(SInt), CommOp::MIN, ROOT);
     return min;
 }
 
-LPFloat ReduceMean(const SInt value, CommInterface comm) {
+LPFloat ReduceMean(const SInt value, CommInterface& comm) {
     SInt sum = 0;
     comm.Reduce(&value, &sum, 1, typeid(SInt), CommOp::SUM, ROOT);
 
@@ -69,13 +69,13 @@ LPFloat ReduceMean(const SInt value, CommInterface comm) {
     return 1.0 * sum / size;
 }
 
-SInt ReduceMax(const SInt value, CommInterface comm) {
+SInt ReduceMax(const SInt value, CommInterface& comm) {
     SInt max = 0;
     comm.Reduce(&value, &max, 1, typeid(SInt), CommOp::MAX, ROOT);
     return max;
 }
 
-LPFloat ReduceSD(const SInt value, CommInterface comm) {
+LPFloat ReduceSD(const SInt value, CommInterface& comm) {
     const auto values = GatherValue(value, comm);
     const auto mean   = ReduceMean(value, comm);
 
@@ -90,7 +90,7 @@ LPFloat ReduceSD(const SInt value, CommInterface comm) {
     return 0.0; // non-root
 }
 
-DegreeStatistics ReduceDegreeStatistics(const Edgelist& edges, const SInt global_num_nodes, CommInterface comm) {
+DegreeStatistics ReduceDegreeStatistics(const Edgelist& edges, const SInt global_num_nodes, CommInterface& comm) {
     assert(std::is_sorted(edges.begin(), edges.end()));
 
     SInt min = std::numeric_limits<SInt>::max();
@@ -131,7 +131,7 @@ DegreeStatistics ReduceDegreeStatistics(const Edgelist& edges, const SInt global
     return {global_min, 1.0 * global_sum / global_num_nodes, global_max};
 }
 
-std::vector<SInt> ComputeDegreeBins(const Edgelist& edges, const VertexRange vertex_range, CommInterface comm) {
+std::vector<SInt> ComputeDegreeBins(const Edgelist& edges, const VertexRange vertex_range, CommInterface& comm) {
     assert(std::is_sorted(edges.begin(), edges.end()));
 
     std::vector<SInt> bins(std::numeric_limits<SInt>::digits);
@@ -166,7 +166,7 @@ std::vector<SInt> ComputeDegreeBins(const Edgelist& edges, const VertexRange ver
     return global_bins;
 }
 
-double ComputeEdgeLocality(const Edgelist& edges, const VertexRange vertex_range, CommInterface comm) {
+double ComputeEdgeLocality(const Edgelist& edges, const VertexRange vertex_range, CommInterface& comm) {
     const SInt num_local_cut_edges = std::count_if(edges.begin(), edges.end(), [&vertex_range](const auto& edge) {
         return std::get<1>(edge) < vertex_range.first || std::get<1>(edge) >= vertex_range.second;
     });
@@ -181,7 +181,7 @@ double ComputeEdgeLocality(const Edgelist& edges, const VertexRange vertex_range
     return 1.0 - DivideOrDefault(static_cast<double>(num_global_cut_edges), static_cast<double>(num_global_edges), 0.0);
 }
 
-SInt ComputeNumberOfGhostNodes(const Edgelist& edges, const VertexRange vertex_range, CommInterface comm) {
+SInt ComputeNumberOfGhostNodes(const Edgelist& edges, const VertexRange vertex_range, CommInterface& comm) {
     std::unordered_set<SInt> ghost_nodes;
 
     for (const auto& [from, to]: edges) {
@@ -226,7 +226,7 @@ void PrintBasicStatistics(const DistributedElements& vertices, const Distributed
     std::cout << "  Edge imbalance:   " << std::fixed << std::setprecision(3) << edge_imbalance << std::endl;
 }
 
-void PrintBasicStatistics(const SInt local_num_vertices, const SInt local_num_edges, const bool root, CommInterface comm) {
+void PrintBasicStatistics(const SInt local_num_vertices, const SInt local_num_edges, const bool root, CommInterface& comm) {
     const auto global_num_vertices = ReduceSum(local_num_vertices, comm);
     const auto local_min_vertices  = ReduceMin(local_num_vertices, comm);
     const auto local_mean_vertices = ReduceMean(local_num_vertices, comm);
@@ -261,15 +261,15 @@ void PrintBasicStatistics(const SInt local_num_vertices, const SInt local_num_ed
 } // namespace
 
 void PrintBasicStatistics(
-    const XadjArray& xadj, const AdjncyArray& adjncy, VertexRange, const bool root, CommInterface comm) {
+    const XadjArray& xadj, const AdjncyArray& adjncy, VertexRange, const bool root, CommInterface& comm) {
     PrintBasicStatistics(xadj.size() - 1, adjncy.size(), root, comm);
 }
 
-void PrintBasicStatistics(const Edgelist& edges, const VertexRange vertex_range, const bool root, CommInterface comm) {
+void PrintBasicStatistics(const Edgelist& edges, const VertexRange vertex_range, const bool root, CommInterface& comm) {
     PrintBasicStatistics(vertex_range.second - vertex_range.first, edges.size(), root, comm);
 }
 
-void PrintAdvancedStatistics(Edgelist& edges, const VertexRange vertex_range, const bool root, CommInterface comm) {
+void PrintAdvancedStatistics(Edgelist& edges, const VertexRange vertex_range, const bool root, CommInterface& comm) {
     // Sort edges for degree computation
     if (!std::is_sorted(edges.begin(), edges.end())) {
         std::sort(edges.begin(), edges.end());

@@ -46,7 +46,7 @@ Generator* Generator::Generate(const GraphRepresentation representation) {
     return this;
 }
 
-Generator* Generator::Finalize(CommInterface comm) {
+Generator* Generator::Finalize(CommInterface& comm) {
     switch (desired_representation_) {
         case GraphRepresentation::EDGE_LIST:
             FinalizeEdgeList(comm);
@@ -63,7 +63,7 @@ Generator* Generator::Finalize(CommInterface comm) {
 }
 
 std::unique_ptr<kagen::EdgeWeightGenerator>
-CreateEdgeWeightGenerator(const EdgeWeightConfig weight_config, CommInterface comm, const VertexRange vertex_range) {
+CreateEdgeWeightGenerator(const EdgeWeightConfig weight_config, CommInterface& comm, const VertexRange vertex_range) {
     switch (weight_config.generator_type) {
         case EdgeWeightGeneratorType::DEFAULT:
             return std::make_unique<DefaultEdgeWeightGenerator>(weight_config);
@@ -80,7 +80,7 @@ CreateEdgeWeightGenerator(const EdgeWeightConfig weight_config, CommInterface co
     throw std::runtime_error("invalid weight generator type");
 }
 
-void Generator::GenerateEdgeWeights(EdgeWeightConfig weight_config, CommInterface comm) {
+void Generator::GenerateEdgeWeights(EdgeWeightConfig weight_config, CommInterface& comm) {
     std::unique_ptr<kagen::EdgeWeightGenerator> edge_weight_generator =
         CreateEdgeWeightGenerator(weight_config, comm, graph_.vertex_range);
 
@@ -289,7 +289,7 @@ auto ApplyPermutationAndComputeSendBuffers(
 }
 } // namespace
 
-void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config, [[maybe_unused]] CommInterface comm) {
+void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config, [[maybe_unused]] CommInterface& comm) {
 #ifdef KAGEN_XXHASH_FOUND
     int size = -1;
     int rank = -1;
@@ -343,7 +343,7 @@ void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config,
 }
 
 std::unique_ptr<kagen::VertexWeightGenerator>
-CreateVertexWeightGenerator(const VertexWeightConfig weight_config, CommInterface comm) {
+CreateVertexWeightGenerator(const VertexWeightConfig weight_config, CommInterface& comm) {
     switch (weight_config.generator_type) {
         case VertexWeightGeneratorType::DEFAULT:
             return std::make_unique<DefaultVertexWeightGenerator>(weight_config);
@@ -356,7 +356,7 @@ CreateVertexWeightGenerator(const VertexWeightConfig weight_config, CommInterfac
     throw std::runtime_error("invalid weight generator type");
 }
 
-void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, CommInterface comm) {
+void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, CommInterface& comm) {
     std::unique_ptr<kagen::VertexWeightGenerator> vertex_weight_generator =
         CreateVertexWeightGenerator(weight_config, comm);
 
@@ -379,7 +379,7 @@ void CSROnlyGenerator::GenerateEdgeList() {
     GenerateCSR();
 }
 
-void CSROnlyGenerator::FinalizeEdgeList(CommInterface comm) {
+void CSROnlyGenerator::FinalizeEdgeList(CommInterface& comm) {
     if (graph_.xadj.empty()) {
         return;
     }
@@ -402,7 +402,7 @@ void EdgeListOnlyGenerator::GenerateCSR() {
     GenerateEdgeList();
 }
 
-void EdgeListOnlyGenerator::FinalizeCSR(CommInterface comm) {
+void EdgeListOnlyGenerator::FinalizeCSR(CommInterface& comm) {
     if (!graph_.xadj.empty()) {
         return;
     }

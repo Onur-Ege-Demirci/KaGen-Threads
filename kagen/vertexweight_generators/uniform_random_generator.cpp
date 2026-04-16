@@ -4,7 +4,7 @@
 
 namespace kagen {
 
-UniformRandomVertexWeightGenerator::UniformRandomVertexWeightGenerator(VertexWeightConfig config, CommInterface comm)
+UniformRandomVertexWeightGenerator::UniformRandomVertexWeightGenerator(VertexWeightConfig config, CommInterface& comm)
     : config_(config),
       comm_{comm} {
     if (config_.weight_range_begin >= config_.weight_range_end) {
@@ -14,7 +14,7 @@ UniformRandomVertexWeightGenerator::UniformRandomVertexWeightGenerator(VertexWei
 
 namespace {
 void GenerateRandomWeights(
-    const VertexWeightConfig& config, VertexRange vertex_range, CommInterface comm, VertexWeights& vertex_weights) {
+    const VertexWeightConfig& config, VertexRange vertex_range, CommInterface& comm, VertexWeights& vertex_weights) {
     PEID rank;
     comm.GetRank(&rank);
     std::mt19937                         gen((rank + 42) * 3);

@@ -6,7 +6,7 @@
 #include <mpi.h>
 
 namespace kagen {
-GraphInfo::GraphInfo(const Graph& graph, CommInterface comm)
+GraphInfo::GraphInfo(const Graph& graph, CommInterface& comm)
     : local_n(graph.NumberOfLocalVertices()),
       local_m(graph.NumberOfLocalEdges()),
       global_n(graph.NumberOfLocalVertices()),
@@ -19,25 +19,33 @@ GraphInfo::GraphInfo(const Graph& graph, CommInterface comm)
     //MPI_Allreduce(MPI_IN_PLACE, &global_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Exscan(&local_n, &offset_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Exscan(&local_m, &offset_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
-    MPI_Allreduce(MPI_IN_PLACE, &has_vertex_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
-    MPI_Allreduce(MPI_IN_PLACE, &has_edge_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
+    comm.Allreduce(inplace, &has_vertex_weights, 1, typeid(bool), CommOp::LOR);
+    comm.Allreduce(inplace, &has_edge_weights, 1, typeid(bool), CommOp::LOR);
+    //MPI_Allreduce(MPI_IN_PLACE, &has_vertex_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
+    //MPI_Allreduce(MPI_IN_PLACE, &has_edge_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
 }
 
-GraphInfo::GraphInfo(const GraphInfo& local, CommInterface comm)
+GraphInfo::GraphInfo(const GraphInfo& local, CommInterface& comm)
     : local_n(local.local_n),
       local_m(local.local_m),
       global_n(local.global_n),
       global_m(local.global_m),
       has_vertex_weights(local.has_vertex_weights),
       has_edge_weights(local.has_edge_weights) {
-    MPI_Allreduce(&local_n, &global_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
-    MPI_Allreduce(&local_m, &global_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+
+
+    comm.Allreduce(inplace, &global_n, 1, typeid(SInt), CommOp::SUM);
+    comm.Allreduce(inplace, &global_m, 1, typeid(SInt), CommOp::SUM);   
+    //MPI_Allreduce(&local_n, &global_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+    //MPI_Allreduce(&local_m, &global_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     
     //TODO_O
     MPI_Exscan(&local_n, &offset_n, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     MPI_Exscan(&local_m, &offset_m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
-    MPI_Allreduce(MPI_IN_PLACE, &has_vertex_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
-    MPI_Allreduce(MPI_IN_PLACE, &has_edge_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
+    comm.Allreduce(inplace, &has_vertex_weights, 1, typeid(bool), CommOp::LOR);
+    comm.Allreduce(inplace, &has_edge_weights, 1, typeid(bool), CommOp::LOR);
+    //MPI_Allreduce(MPI_IN_PLACE, &has_vertex_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
+    //MPI_Allreduce(MPI_IN_PLACE, &has_edge_weights, 1, MPI_C_BOOL, MPI_LOR, comm);
 }
 GraphWriter::GraphWriter(
     const OutputGraphConfig& config, Graph& graph, const GraphInfo info, const PEID rank, const PEID size)

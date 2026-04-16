@@ -10,15 +10,16 @@
 #include "kagen/context.h"
 #include "kagen/generators/generator.h"
 #include "kagen/kagen.h"
+#include "kagen/communicators/communicator_interface.h"
 
-#include <mpi.h>
+
 
 namespace kagen {
 class BarabassiFactory : public GeneratorFactory {
 public:
     PGeneratorConfig NormalizeParameters(PGeneratorConfig config, PEID rank, PEID size, bool output) const final;
 
-    std::unique_ptr<Generator> Create(const PGeneratorConfig& config, PEID rank, PEID size) const final;
+    std::unique_ptr<Generator> Create(const PGeneratorConfig& config, PEID rank, PEID size, CommInterface& comm) const final;
 };
 
 class Barabassi : public virtual Generator, private EdgeListOnlyGenerator {
@@ -28,7 +29,7 @@ public:
 protected:
     void GenerateEdgeList() final;
 
-    void FinalizeEdgeList(CommInterface comm) final;
+    void FinalizeEdgeList(CommInterface& comm) final;
 
 private:
     // Config

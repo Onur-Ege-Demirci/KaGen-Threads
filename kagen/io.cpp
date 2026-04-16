@@ -203,7 +203,7 @@ GraphFragment ReadGraphFragment(
     };
 }
 
-Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, CommInterface comm) {
+Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, CommInterface& comm) {
     if (fragment.deficits & ReaderDeficits::REQUIRES_REDISTRIBUTION) {
         if (fragment.graph.representation == GraphRepresentation::CSR) {
             throw std::invalid_argument("not implemented");
@@ -234,7 +234,7 @@ Graph FinalizeGraphFragment(GraphFragment fragment, const bool output, CommInter
     return std::move(fragment.graph);
 }
 
-void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, const bool output, CommInterface comm) {
+void WriteGraph(GraphWriter& writer, const OutputGraphConfig& config, const bool output, CommInterface& comm) {
     const PEID size = GetCommSize(comm);
     const PEID rank = GetCommRank(comm);
 

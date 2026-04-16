@@ -10,7 +10,7 @@ struct kagen_graph {
     kagen::Graph* result_ptr;
 };
 
-kagen_obj* kagen_create(CommInterface comm) {
+kagen_obj* kagen_create(CommInterface& comm) {
     kagen_obj* gen_ptr = new kagen_obj;
     gen_ptr->gen_ptr   = new kagen::KaGen(comm);
     return gen_ptr;
@@ -337,7 +337,7 @@ kagen_graph* kagen_generate_rmat(
     return result_wrapper;
 }
 
-void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, CommInterface comm) {
+void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, CommInterface& comm) {
     if (dist == nullptr) {
         return;
     }
@@ -346,9 +346,7 @@ void kagen_build_vertex_distribution(kagen_graph* result, kagen_index* dist, Com
     comm.GetRank(&rank);
     comm.GetSize(&size);
     dist[0]        = 0;
-    dist[rank + 1] = result->result_ptr->vertex_range.second;
-
-    //TODO_O potential problem here. 
-    comm.Allgather(inplace, dist + 1, 1, typeid(unsigned long long), CommOp::SUM, 0);
+    dist[rank + 1] = result->result_ptr->vertex_range.second; 
+    comm.Allgather(inplace, dist + 1, 1, typeid(unsigned long long));
     //comm.Allgather(inplace, BufferRef(dist + 1, 1, &typeid(unsigned long long)), CommOp::SUM, 0);
 }

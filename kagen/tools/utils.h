@@ -24,7 +24,7 @@ inline std::pair<SInt, SInt> ComputeRange(const SInt n, const PEID size, const P
     return {from, to};
 }
 
-inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, CommInterface comm) {
+inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, CommInterface& comm) {
     SInt n = 0;
     for (const auto& [u, v]: edges) {
         n = std::max(n, std::max(u, v));
@@ -33,13 +33,13 @@ inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, CommInterface 
     return n + 1;
 }
 
-inline PEID GetCommRank(CommInterface comm) {
+inline PEID GetCommRank(CommInterface& comm) {
     PEID rank;
     comm.GetRank(&rank);
     return rank;
 }
 
-inline PEID GetCommSize(CommInterface comm) {
+inline PEID GetCommSize(CommInterface& comm) {
     PEID size;
     comm.GetSize(&size);
     return size;
@@ -86,7 +86,7 @@ inline PEID FindPEInRangeWithBinarySearch(const SInt node, const std::vector<Ver
     return -1;
 }
 
-inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_range, CommInterface comm) {
+inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_range, CommInterface& comm) {
     int rank, size;
     comm.GetRank(&rank);
     comm.GetSize(&size);
@@ -101,7 +101,7 @@ inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_ra
 
 template <typename T>
 std::vector<T> ExchangeMessageBuffers(
-    std::unordered_map<PEID, std::vector<T>> message_buffers, MPI_Datatype mpi_datatype, CommInterface comm) {
+    std::unordered_map<PEID, std::vector<T>> message_buffers, MPI_Datatype mpi_datatype, CommInterface& comm) {
     PEID rank, size;
     comm.GetRank(&rank);
     comm.GetSize(&size);
@@ -131,6 +131,7 @@ std::vector<T> ExchangeMessageBuffers(
     }
     recv_buf.resize(total_recv_count);
     
+    //TODO_O variable mpi datatype oh dear.
     MPI_Alltoallv(
         send_buf.data(), send_counts.data(), send_displs.data(), mpi_datatype, recv_buf.data(), recv_counts.data(),
         recv_displs.data(), mpi_datatype, comm);

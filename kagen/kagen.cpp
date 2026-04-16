@@ -458,7 +458,7 @@ void Graph::SortEdgelist() {
     }
 }
 
-KaGen::KaGen(CommInterface comm)
+KaGen::KaGen(CommInterface& comm)
     : comm_(comm),
       config_(std::make_unique<PGeneratorConfig>()),
       representation_(GraphRepresentation::EDGE_LIST) {
@@ -530,7 +530,7 @@ void KaGen::UseCSRRepresentation() {
 namespace {
 auto GenericGenerateFromOptionString(
     const std::string& options_str, PGeneratorConfig base_config, const GraphRepresentation representation,
-    CommInterface comm) {
+    CommInterface& comm) {
     return GenerateInMemory(CreateConfigFromString(options_str, base_config), representation, comm);
 }
 } // namespace
@@ -574,7 +574,7 @@ Graph KaGen::GenerateUndirectedGNP(const SInt n, const LPFloat p, const bool sel
 namespace {
 Graph GenerateRGG2D_Impl(
     PGeneratorConfig& config, const SInt n, const SInt m, const LPFloat r, const bool coordinates,
-    const GraphRepresentation representation, CommInterface comm) {
+    const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::RGG_2D;
     config.n           = n;
     config.m           = m;
@@ -599,7 +599,7 @@ Graph KaGen::GenerateRGG2D_MR(const SInt m, const LPFloat r, const bool coordina
 namespace {
 Graph GenerateRGG3D_Impl(
     PGeneratorConfig& config, const SInt n, const SInt m, const LPFloat r, const bool coordinates,
-    const GraphRepresentation representation, CommInterface comm) {
+    const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::RGG_3D;
     config.m           = m;
     config.n           = n;
@@ -625,7 +625,7 @@ Graph KaGen::GenerateRGG3D_MR(const SInt m, const LPFloat r, const bool coordina
 namespace {
 Graph GenerateRDG2D_Impl(
     PGeneratorConfig& config, const SInt n, const SInt m, const bool periodic, const bool coordinates,
-    const GraphRepresentation representation, CommInterface comm) {
+    const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::RDG_2D;
     config.n           = n;
     config.m           = m;
@@ -646,7 +646,7 @@ Graph KaGen::GenerateRDG2D_M(const SInt m, const bool periodic, const bool coord
 namespace {
 Graph GenerateRDG3D_Impl(
     PGeneratorConfig& config, const SInt n, const SInt m, const bool coordinates,
-    const GraphRepresentation representation, CommInterface comm) {
+    const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::RDG_3D;
     config.n           = n;
     config.m           = m;
@@ -683,7 +683,7 @@ Graph KaGen::GenerateRDG3D_M(SInt, bool) {
 namespace {
 Graph GenerateBA_Impl(
     PGeneratorConfig& config, const SInt n, const SInt m, const SInt d, const bool directed, const bool self_loops,
-    const GraphRepresentation representation, CommInterface comm) {
+    const GraphRepresentation representation, CommInterface& comm) {
     config.generator  = GeneratorType::BA;
     config.m          = m;
     config.n          = n;
@@ -709,7 +709,7 @@ Graph KaGen::GenerateBA_MD(const SInt m, const SInt d, const bool directed, cons
 namespace {
 Graph GenerateRHG_Impl(
     PGeneratorConfig& config, const LPFloat gamma, const SInt n, const SInt m, const LPFloat d, const bool coordinates,
-    const GraphRepresentation representation, CommInterface comm) {
+    const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::RHG;
     config.n           = n;
     config.m           = m;
@@ -735,7 +735,7 @@ Graph KaGen::GenerateRHG_MD(const LPFloat gamma, const SInt m, const LPFloat d, 
 namespace {
 Graph GenerateGrid2D_Impl(
     PGeneratorConfig& config, const SInt n, const SInt grid_x, const SInt grid_y, const LPFloat p, const SInt m,
-    const bool periodic, const bool coordinates, const GraphRepresentation representation, CommInterface comm) {
+    const bool periodic, const bool coordinates, const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::GRID_2D;
     config.grid_x      = grid_x;
     config.grid_y      = grid_y;
@@ -764,7 +764,7 @@ Graph KaGen::GenerateGrid2D_NM(const SInt n, const SInt m, const bool periodic, 
 namespace {
 Graph GenerateGrid3D_Impl(
     PGeneratorConfig& config, const SInt grid_x, const SInt grid_y, const SInt grid_z, const LPFloat p, const SInt m,
-    const bool periodic, const bool coordinates, const GraphRepresentation representation, CommInterface comm) {
+    const bool periodic, const bool coordinates, const GraphRepresentation representation, CommInterface& comm) {
     config.generator   = GeneratorType::GRID_3D;
     config.grid_x      = grid_x;
     config.grid_y      = grid_y;
@@ -850,7 +850,7 @@ void KaGen::SetDefaults() {
     return primary_edges.size() + secondary_edges.size();
 }
 
-sKaGen::sKaGen(const std::string& options, PEID chunks_per_pe, CommInterface comm)
+sKaGen::sKaGen(const std::string& options, PEID chunks_per_pe, CommInterface& comm)
     : generator_(std::make_unique<StreamingGenerator>(options, chunks_per_pe, comm)) {}
 
 sKaGen::~sKaGen() = default;

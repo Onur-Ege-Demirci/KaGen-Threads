@@ -10,7 +10,7 @@ public:
     Graph500Generator(const PGeneratorConfig& config);
 
 protected:
-    void FinalizeEdgeList(CommInterface comm) final;
+    void FinalizeEdgeList(CommInterface& comm) final;
 
     inline void PushLocalEdge(const SInt from, const SInt to) {
         if (config_.self_loops || from != to) {

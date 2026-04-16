@@ -23,7 +23,7 @@ namespace kagen {
 
 
 
-void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm) {
+void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface& comm) {
     PEID size, rank;
     comm.initialize_size(&size, &rank);
     
@@ -59,7 +59,7 @@ void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface comm) {
     }
 }
 
-Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, CommInterface comm) {
+Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, CommInterface& comm) {
 
     PEID size, rank;
     comm.GetSize(&size);
@@ -90,7 +90,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
 
     const auto t_start_graphgen = comm.getTime();
 
-    auto generator = factory->Create(config, rank, size);
+    auto generator = factory->Create(config, rank, size, comm);
     generator->Generate(representation);
     comm.barrier();
 
@@ -120,12 +120,12 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         std::cout << "OK" << std::endl;
     }
 
-    const auto t_end_graphgen = comm.time();
+    const auto t_end_graphgen = comm.getTime();
 
     if (!config.skip_postprocessing && !config.quiet) {
         SInt num_global_edges_before, num_global_edges_after;
-        comm.Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, typeid(SInt) ,KAGEN_OP.SUM, ROOT);
-        comm.Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, typeid(SInt) ,KAGEN_OP.SUM, ROOT);
+        comm.Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, typeid(SInt) ,CommOp::SUM, ROOT);
+        comm.Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, typeid(SInt) ,CommOp::SUM, ROOT);
 
         if (num_global_edges_before != num_global_edges_after && output_info) {
             std::cout << "The number of edges changed from " << num_global_edges_before << " to "
@@ -135,7 +135,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
                       << ")" << std::endl;
         }
     }
-    //TODO_O oh god
+
     if (config.permute) {
         generator->PermuteVertices(config, comm);
     }
@@ -160,7 +160,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         }
     }
 
-    //TODO_O
+
     // Statistics
     if (!config.quiet) {
         if (output_info) {

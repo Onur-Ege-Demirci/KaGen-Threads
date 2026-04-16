@@ -13,7 +13,7 @@ namespace kagen {
  */
 class UniformRandomEdgeWeightGenerator : public EdgeWeightGenerator {
 public:
-    UniformRandomEdgeWeightGenerator(EdgeWeightConfig config, CommInterface comm, VertexRange vertex_range);
+    UniformRandomEdgeWeightGenerator(EdgeWeightConfig config, CommInterface& comm, VertexRange vertex_range);
 
     void GenerateEdgeWeights(const XadjArray& xadj, const AdjncyArray& adjncy, EdgeWeights& weights) final;
     void GenerateEdgeWeights(const Edgelist& edgelist, EdgeWeights& weights) final;

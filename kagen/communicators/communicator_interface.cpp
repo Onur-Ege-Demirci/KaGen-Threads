@@ -35,12 +35,12 @@ void CommInterface::Allreduce(const void* sendbuf, void* recvbuf, int count, con
     comm->Allreduce(sendbuf, recvbuf, count, type, op);
 }
 
-void CommInterface::Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type, CommOp op) {
-    comm->Allgather(sendbuf, sendcount, send_type, recvbuf, recvcount, recv_type, op);
+void CommInterface::Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type) {
+    comm->Allgather(sendbuf, sendcount, send_type, recvbuf, recvcount, recv_type);
 }
 
-void CommInterface::Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type, CommOp op, int root) {
-    comm -> Allgather(inplace, recvbuf, recvcount, recv_type, op, root);
+void CommInterface::Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type) {
+    comm -> Allgather(inplace, recvbuf, recvcount, recv_type);
 }
 
 void CommInterface::AllgatherV(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, const int recvcounts[], const int displs[], const std::type_info& recv_type) {

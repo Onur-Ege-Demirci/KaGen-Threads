@@ -3,6 +3,7 @@
 #include "./../kagen.h"
 #include "communicator.h"
 
+
 #include <vector>
 #include <thread>
 
@@ -13,17 +14,18 @@ enum class CommunicatorType {
     MPI, 
     THREAD,
     HYBRID
-}
+};
+
+//TODO_O write a header file for mpi communicator.
 
 
-Communicator getMPICommunicator() {
-    Communicator comm = MPI_Communicator();
+CommInterface getMPICommInterface() {
+    auto comm = MPI_Communicator();
     int rank; 
-    MPI_Comm_rank(&rank);
+    MPI_Comm_rank(comm, &rank);
     CommInterface interface = CommInterface(rank, comm);
-    return comm;
+    return interface;
 }
-
 
 //getThreadCommunicator just constructs the communicator. The user is then responsible for creating the threads in the first place as well as lining up the relevant execution. 
 //A created thread can be added to the communicator using addThreadToCommunicator, and the handle for the CommInterface received through it.

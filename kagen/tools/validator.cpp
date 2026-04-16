@@ -184,7 +184,8 @@ bool ValidateGraph(
 
         std::exclusive_scan(send_counts.begin(), send_counts.end(), send_displs.begin(), 0);
         const std::size_t total_send_count = send_displs.back() + send_counts.back();
-        MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
+        comm.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
+        //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
         std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
         const std::size_t total_recv_count = recv_displs.back() + recv_counts.back();
 
@@ -224,7 +225,7 @@ bool ValidateGraph(
 
 bool ValidateGraphInplace(
     Graph& graph, const bool allow_self_loops, const bool allow_directed_graphs, const bool allow_multi_edges,
-    CommInterface comm) {
+    CommInterface& comm) {
     if (graph.representation == GraphRepresentation::CSR) {
         std::cerr << "not implemented";
         comm.abort(1);
@@ -323,7 +324,8 @@ bool ValidateGraphInplace(
 
         std::exclusive_scan(send_counts.begin(), send_counts.end(), send_displs.begin(), 0);
         const std::size_t total_send_count = send_displs.back() + send_counts.back();
-        MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
+        comm.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
+        //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
         std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
         const std::size_t total_recv_count = recv_displs.back() + recv_counts.back();
 
@@ -336,10 +338,13 @@ bool ValidateGraphInplace(
         }
 
         recv_buf.resize(total_recv_count);
-        MPI_Alltoallv(
+        /*MPI_Alltoallv(
             send_buf.data(), send_counts.data(), send_displs.data(), MPI_UINT64_T, recv_buf.data(), recv_counts.data(),
             recv_displs.data(), MPI_UINT64_T, comm);
-
+        */
+        comm.AlltoallV(
+            send_buf.data(), send_counts.data(), send_displs.data(), typeid(SInt), recv_buf.data(), recv_counts.data(),
+            recv_displs.data(), typeid(SInt));
         for (std::size_t i = 0; i < recv_buf.size();) {
             const SInt u = recv_buf[i++];
             const SInt v = recv_buf[i++];

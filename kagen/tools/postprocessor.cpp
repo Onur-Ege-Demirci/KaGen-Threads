@@ -62,7 +62,7 @@ void AddNonlocalReverseEdges(
 }
 
 void RedistributeEdgesByVertexRange(
-    Edgelist& edge_list, const VertexRange vertex_range, CommInterface comm, bool use_binary_search) {
+    Edgelist& edge_list, const VertexRange vertex_range, CommInterface& comm, bool use_binary_search) {
     PEID rank, size;
     comm.GetRank(&rank);
     comm.GetSize(&size);
@@ -115,13 +115,20 @@ void RedistributeEdgesByVertexRange(
     recv_buf.resize(total_recv_count);
     local_edges.reserve(local_edges.size() + total_recv_count / 2);
 
-    MPI_Alltoallv(
+    comm.AlltoallV(
+        send_buf.data(), send_counts.data(), send_displs.data(), typeid(SInt), recv_buf.data(), recv_counts.data(),
+        recv_displs.data(), typeid(SInt));
+    {
+        [[maybe_unused]] auto _clear = std::move(send_buf);
+    }
+    
+    /*MPI_Alltoallv(
         send_buf.data(), send_counts.data(), send_displs.data(), KAGEN_MPI_SINT, recv_buf.data(), recv_counts.data(),
         recv_displs.data(), KAGEN_MPI_SINT, comm);
     {
         [[maybe_unused]] auto _clear = std::move(send_buf);
     }
-
+    */
     for (std::size_t i = 0; i < recv_buf.size(); i += 2) {
         local_edges.emplace_back(recv_buf[i], recv_buf[i + 1]);
     }
@@ -136,7 +143,7 @@ void RedistributeEdgesByVertexRange(
     std::swap(local_edges, edge_list);
 }
 
-std::vector<SInt> ComputeBalancedVertexDistribution(const SInt n, CommInterface comm) {
+std::vector<SInt> ComputeBalancedVertexDistribution(const SInt n, CommInterface& comm) {
     PEID size;
     comm.GetSize(&size);
 
@@ -269,7 +276,8 @@ ComputeBalancedEdgeDistribution(Edgelist const& edges, const std::vector<SInt>& 
         prefix_sum = 0;
     }
     SInt m = total_degree;
-    MPI_Allreduce(MPI_IN_PLACE, &m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+    comm.Allreduce(inplace, &m, 1, typeid(SInt), CommOp::SUM);
+    //MPI_Allreduce(MPI_IN_PLACE, &m, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
 
     if (m == 0) {
         std::vector<SInt> dist(size + 1, n);
@@ -304,7 +312,8 @@ ComputeBalancedEdgeDistribution(Edgelist const& edges, const std::vector<SInt>& 
     {
         std::vector<int> recvcounts(size, 0);
         int              local_len = static_cast<int>(breakpoints.size());
-        MPI_Allgather(&local_len, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
+        comm.Allgather(&local_len, 1, typeid(int), recvcounts.data(), 1, typeid(int));
+        //MPI_Allgather(&local_len, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, comm);
         std::vector<int> displs(size, 0);
         int              total = 0;
         for (int i = 0; i < size; ++i) {
@@ -312,9 +321,12 @@ ComputeBalancedEdgeDistribution(Edgelist const& edges, const std::vector<SInt>& 
             total += recvcounts[i];
         }
         edge_balanced_distribution.resize(total);
-        MPI_Allgatherv(
+        comm.AllgatherV(
+            breakpoints.data(), local_len, typeid(int), edge_balanced_distribution.data(), recvcounts.data(),
+            displs.data(), typeid(int));
+        /* MPI_Allgatherv(
             breakpoints.data(), local_len, KAGEN_MPI_SINT, edge_balanced_distribution.data(), recvcounts.data(),
-            displs.data(), KAGEN_MPI_SINT, comm);
+            displs.data(), KAGEN_MPI_SINT, comm); */
     }
     // Pad with n if fewer than size+1 breakpoints were found (low-degree graphs)
     for (std::size_t i = edge_balanced_distribution.size(); i < static_cast<SInt>(size + 1); ++i) {
@@ -324,7 +336,7 @@ ComputeBalancedEdgeDistribution(Edgelist const& edges, const std::vector<SInt>& 
 }
 
 VertexRange RedistributeEdgesBalanced(
-    Edgelist& source, Edgelist& destination, const SInt n, bool remap_round_robin, CommInterface comm) {
+    Edgelist& source, Edgelist& destination, const SInt n, bool remap_round_robin, CommInterface& comm) {
     SortAndRemoveDuplicates(source);
     std::vector<SInt> vertex_distribution;
     if (remap_round_robin) {
@@ -346,7 +358,7 @@ VertexRange RedistributeEdgesBalanced(
 }
 
 VertexRange
-RedistributeEdges(Edgelist& source, Edgelist& destination, const SInt n, bool remap_round_robin, CommInterface comm) {
+RedistributeEdges(Edgelist& source, Edgelist& destination, const SInt n, bool remap_round_robin, CommInterface& comm) {
     SortAndRemoveDuplicates(source);
     std::vector<SInt> distribution;
     if (remap_round_robin) {
