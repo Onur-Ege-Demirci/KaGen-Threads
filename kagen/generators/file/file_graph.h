@@ -18,9 +18,9 @@ protected:
 
     void GenerateCSR() final;
 
-    void FinalizeEdgeList(CommInterface comm) final;
+    void FinalizeEdgeList(CommInterface&  comm) final;
 
-    void FinalizeCSR(CommInterface comm) final;
+    void FinalizeCSR(CommInterface& comm) final;
 
 private:
     void GenerateImpl(GraphRepresentation representation);

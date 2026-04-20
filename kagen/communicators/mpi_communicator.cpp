@@ -94,4 +94,7 @@ class MPI_Communicator : Communicator {
         void AlltoallV(const void* sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type, void* recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type) override {
             MPI_Alltoallv(sendbuf, sendcounts, sdispls, getMPIType(send_type), recvbuf, recvcounts, rdispls, getMPIType(recv_type), comm);
         }
+        double getTime() override {
+            return MPI_Wtime();
+        }
 };

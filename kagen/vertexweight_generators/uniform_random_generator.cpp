@@ -4,9 +4,8 @@
 
 namespace kagen {
 
-UniformRandomVertexWeightGenerator::UniformRandomVertexWeightGenerator(VertexWeightConfig config, CommInterface& comm)
-    : config_(config),
-      comm_{comm} {
+UniformRandomVertexWeightGenerator::UniformRandomVertexWeightGenerator(VertexWeightConfig config)
+    : config_(config) {
     if (config_.weight_range_begin >= config_.weight_range_end) {
         throw std::runtime_error("Weight causes undefined behavior, need weight_range_begin < weight_range_end.");
     }

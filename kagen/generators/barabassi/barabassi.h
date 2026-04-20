@@ -19,7 +19,7 @@ class BarabassiFactory : public GeneratorFactory {
 public:
     PGeneratorConfig NormalizeParameters(PGeneratorConfig config, PEID rank, PEID size, bool output) const final;
 
-    std::unique_ptr<Generator> Create(const PGeneratorConfig& config, PEID rank, PEID size, CommInterface& comm) const final;
+    std::unique_ptr<Generator> Create(const PGeneratorConfig& config, PEID rank, PEID size) const final;
 };
 
 class Barabassi : public virtual Generator, private EdgeListOnlyGenerator {

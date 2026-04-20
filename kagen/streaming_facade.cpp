@@ -205,7 +205,7 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
 }
 
 std::unique_ptr<Generator> StreamingGenerator::CreateGenerator(const PEID chunk) {
-    return factory_->Create(config_, streaming_chunks_per_pe_ * rank_ + chunk, streaming_chunks_per_pe_ * size_, comm_);
+    return factory_->Create(config_, streaming_chunks_per_pe_ * rank_ + chunk, streaming_chunks_per_pe_ * size_);
 }
 
 StreamedGraph StreamingGenerator::Next() {

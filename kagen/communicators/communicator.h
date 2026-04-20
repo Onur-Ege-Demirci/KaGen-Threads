@@ -31,5 +31,6 @@ class Communicator {
         virtual void Broadcast(void* buffer, int count, const std::type_info& type, int root) = 0;
         virtual void Alltoall(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type) = 0;
         virtual void AlltoallV(const void* sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type, void* recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type) = 0;
+        virtual double getTime() = 0;
 };
 

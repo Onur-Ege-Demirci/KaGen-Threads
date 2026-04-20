@@ -98,9 +98,9 @@ namespace {
 template <typename Permutator>
 auto ApplyPermutationAndComputeSendBuffersEdgeList(
     const Graph& graph, const std::vector<VertexRange>& recv_ranges, Permutator&& permute) {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+    // int rank;
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        //TODO_O is this a magical coconut?
     Edgelist edges = graph.edges;
     for (auto& [src, dst]: edges) {
         src = permute(src);
@@ -258,8 +258,9 @@ auto ApplyPermutationAndComputeSendBuffers(
     const std::vector<SSInt>& recv_vertex_weights) {
     std::size_t       num_local_vertices = recv_range.second - recv_range.first;
     std::vector<SInt> degree(num_local_vertices, 0);
-    int               rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // int               rank;
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    //TODO_O is this another magical coconut?
     for (std::size_t i = 0; i < recv_edges.size(); i += 2) {
         const auto src = recv_edges[i];
         ++degree[src - recv_range.first];
@@ -371,9 +372,9 @@ void Generator::GenerateVertexWeights(VertexWeightConfig weight_config, CommInte
     }
 }
 
-void Generator::FinalizeEdgeList(CommInterface) {}
+void Generator::FinalizeEdgeList(CommInterface&) {}
 
-void Generator::FinalizeCSR(CommInterface) {}
+void Generator::FinalizeCSR(CommInterface&) {}
 
 void CSROnlyGenerator::GenerateEdgeList() {
     GenerateCSR();

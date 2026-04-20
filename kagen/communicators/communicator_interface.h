@@ -1,6 +1,6 @@
 #pragma once
 #include "communicator.h"
-
+#include <chrono>
 
 class CommInterface {
     private:
@@ -24,4 +24,5 @@ class CommInterface {
         void Alltoall(const void* sendbuf, int sendcount, const std::type_info& send_type, void *recvbuf, int recvcount, const std::type_info& recv_type);
         void AlltoallV(const void *sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type, void *recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type);
         void GetWorldRank(int* rank);
+        double getTime();
 };

@@ -16,7 +16,7 @@ class PathDirected : public virtual Generator, private EdgeListOnlyGenerator {
 public:
     PathDirected(const PGeneratorConfig& config, const PEID rank, const PEID size);
 
-    void PermuteVertices(const PGeneratorConfig& /*config*/, CommInterface /*comm*/)
+    void PermuteVertices(const PGeneratorConfig& /*config*/, CommInterface& /*comm*/)
         override { /* do nothing as paths can be permutet without communication during construction */ }
 
 protected:

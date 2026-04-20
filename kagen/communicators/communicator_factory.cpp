@@ -2,7 +2,7 @@
 #include "communicator_interface.h"
 #include "./../kagen.h"
 #include "communicator.h"
-
+#include <mpi.h>
 
 #include <vector>
 #include <thread>

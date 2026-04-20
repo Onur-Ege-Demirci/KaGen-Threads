@@ -60,4 +60,7 @@ void CommInterface::AlltoallV(const void *sendbuf, const int sendcounts[], const
     comm -> AlltoallV(sendbuf, sendcounts, sdispls, send_type, recvbuf, recvcounts, rdispls, recv_type);
 }
 
+double CommInterface::getTime() {
+    return comm -> getTime();
+}
 

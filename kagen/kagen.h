@@ -289,7 +289,7 @@ private:
 
 class KaGen {
 public:
-    KaGen(CommInterface);
+    KaGen(CommInterface&);
 
     KaGen(const KaGen&) = delete;
     KaGen(KaGen&&) noexcept;

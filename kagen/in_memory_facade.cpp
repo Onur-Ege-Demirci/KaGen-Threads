@@ -25,7 +25,8 @@ namespace kagen {
 
 void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface& comm) {
     PEID size, rank;
-    comm.initialize_size(&size, &rank);
+    comm.GetSize(&size);
+    comm.GetRank(&rank);
     
     auto graph = GenerateInMemory(config, GraphRepresentation::EDGE_LIST, comm);
 
@@ -90,7 +91,7 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
 
     const auto t_start_graphgen = comm.getTime();
 
-    auto generator = factory->Create(config, rank, size, comm);
+    auto generator = factory->Create(config, rank, size);
     generator->Generate(representation);
     comm.barrier();
 
