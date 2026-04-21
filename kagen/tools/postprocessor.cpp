@@ -271,7 +271,8 @@ ComputeBalancedEdgeDistribution(Edgelist const& edges, const std::vector<SInt>& 
 
     // Compute prefix sum of degrees across PEs and total edge count m
     SInt prefix_sum = 0;
-    MPI_Exscan(&total_degree, &prefix_sum, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
+    comm.Exscan(&total_degree, &prefix_sum, 1, typeid(SInt), CommOp::SUM);
+    //MPI_Exscan(&total_degree, &prefix_sum, 1, KAGEN_MPI_SINT, MPI_SUM, comm);
     if (rank == 0) {
         prefix_sum = 0;
     }

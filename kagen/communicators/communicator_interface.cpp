@@ -4,7 +4,7 @@
 
 
 
-CommInterface::CommInterface(int rank, Communicator* comm) {
+CommInterface::CommInterface(int rank, std::shared_ptr<Communicator> comm) {
     this->rank = rank;
     this->comm = comm;
 }
@@ -64,3 +64,6 @@ double CommInterface::getTime() {
     return comm -> getTime();
 }
 
+void CommInterface::Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) {
+    comm -> Exscan(sendbuf, recvbuf, count, type, op);
+}

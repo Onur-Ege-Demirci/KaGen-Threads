@@ -22,7 +22,7 @@ using std::unordered_map;
 // This class is a communicator for threads within the same process, using shared memory and synchronization primitives
 // to implement the communication operations. The number of threads can be increased during runtime. Decreasing isn't
 // supported yet (ETA probably never).
-class Thread_Communicator : Communicator {
+class Thread_Communicator : public Communicator {
 private:
     static const int                    root = 0;
     vector<thread>&                     threads;
@@ -495,6 +495,11 @@ public:
             }
         }
     }
+
+    void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
+        //TODO_O
+        return;
+    } 
 
     double getTime() override {
         return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();

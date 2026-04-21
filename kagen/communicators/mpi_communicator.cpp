@@ -5,7 +5,7 @@
 #include <functional>
 #include <typeindex>
 #include <mpi.h>
-class MPI_Communicator : Communicator {
+class MPI_Communicator : public Communicator {
     private:
         MPI_Comm comm;
         inline static const std::unordered_map<std::type_index, MPI_Datatype> table = {
@@ -94,6 +94,11 @@ class MPI_Communicator : Communicator {
         void AlltoallV(const void* sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type, void* recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type) override {
             MPI_Alltoallv(sendbuf, sendcounts, sdispls, getMPIType(send_type), recvbuf, recvcounts, rdispls, getMPIType(recv_type), comm);
         }
+
+        void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
+            MPI_Exscan(sendbuf, recvbuf, count, getMPIType(type), getMPIOp(op), comm);
+        }
+
         double getTime() override {
             return MPI_Wtime();
         }

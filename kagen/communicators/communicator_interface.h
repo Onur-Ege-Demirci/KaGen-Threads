@@ -5,10 +5,10 @@
 class CommInterface {
     private:
         int rank;
-        Communicator* comm;
+        std::shared_ptr<Communicator> comm;
     public:
         
-        CommInterface(int rank, Communicator* comm);
+        CommInterface(int rank, std::shared_ptr<Communicator> comm);
         void GetRank(int*);
         void GetSize(int*);
         void barrier();
@@ -24,5 +24,6 @@ class CommInterface {
         void Alltoall(const void* sendbuf, int sendcount, const std::type_info& send_type, void *recvbuf, int recvcount, const std::type_info& recv_type);
         void AlltoallV(const void *sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type, void *recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type);
         void GetWorldRank(int* rank);
+        void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op); 
         double getTime();
 };
