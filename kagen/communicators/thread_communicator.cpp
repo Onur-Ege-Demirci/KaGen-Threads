@@ -1,5 +1,6 @@
 #include "kagen/definitions.h"
 #include "kagen/kagen.h"
+#include "kagen/communicators/thread_communicator.h"
 
 #include "communicator.h"
 #include <algorithm>
@@ -22,11 +23,10 @@ using std::unordered_map;
 // This class is a communicator for threads within the same process, using shared memory and synchronization primitives
 // to implement the communication operations. The number of threads can be increased during runtime. Decreasing isn't
 // supported yet.
-class Thread_Communicator : public Communicator {
-private:
+
     
     template <typename T>
-    static std::function<void(T*, const T*, size_t)> getOp(CommOp op) {
+    std::function<void(T*, const T*, size_t)> Thread_Communicator::getOp(CommOp op) {
         switch (op) {
             case CommOp::SUM:
                 return [](T* dest, const T* src, size_t) {
@@ -57,7 +57,7 @@ private:
         {std::type_index(typeid(unsigned long long)), sizeof(unsigned long long)},
         {std::type_index(typeid(long double)), sizeof(long double)}};
     // Helper to apply operation with automatic type dispatch from type_info
-    static void applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count) {
+    static void Thread_Communicator::applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count) {
         if (type == typeid(int)) {
             auto       op_func = getOp<int>(op);
             int*       d       = static_cast<int*>(dest);
@@ -103,18 +103,18 @@ private:
         }
     }
 
-    void flush_buffer() {
+    void Thread_Communicator::flush_buffer() {
         for (size_t i = 0; i < shared_reduce_buffer.size(); i++) {
             shared_reduce_buffer[i] = nullptr;
         }
     }
 
-    int getCurrentRank() {
+    int Thread_Communicator::getCurrentRank() {
         auto thread_id = std::this_thread::get_id();
         return thread_id_to_rank[thread_id];
     }
 
-public:
+
     int Thread_Communicator::addThreadToCommunicator(std::thread& t) {
         int rank = threads.size();
         threads.push_back(t);
@@ -127,28 +127,28 @@ public:
         return rank;
     }
 
-    void GetWorldRank(int* rank) override {
+    void Thread_Communicator::GetWorldRank(int* rank) {
         auto thread_id = std::this_thread::get_id();
         *rank          = thread_id_to_rank[thread_id];
     }
-    ~Thread_Communicator() override {
+    Thread_Communicator::~Thread_Communicator() {
         for (size_t i = 0; i < recv_buffers.size(); i++) {
             recv_buffers[i] = nullptr;
         }
         flush_buffer();
     }
-    void GetWorldSize(int* size) override {
+    void Thread_Communicator::GetWorldSize(int* size) {
         *size = threads.size();
     }
-    void barrier() override {
+    void Thread_Communicator::barrier() {
         static std::barrier b(threads.size());
         b.arrive_and_wait();
     }
-    void abort(int code) override {
+    void Thread_Communicator::abort(int code) {
         std::terminate();
     }
     void
-    Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) override {
+    Thread_Communicator::Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
         {
@@ -178,7 +178,7 @@ public:
         }
     }
 
-    void Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) override {
+    void Thread_Communicator::Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) override {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
 
@@ -206,7 +206,7 @@ public:
         }
     }
 
-    void Allreduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
+    void Thread_Communicator::Allreduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
 
@@ -246,7 +246,7 @@ public:
     }
 
     // TODO_O The devil went down to Georgia....
-    void Allreduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
+    void Thread_Communicator::Allreduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
 
@@ -281,9 +281,9 @@ public:
     }
     // TODO_O The devil went down to Georgia....
 
-    void Allgather(
+    void Thread_Communicator::Allgather(
         const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount,
-        const std::type_info& recv_type) override {
+        const std::type_info& recv_type) {
         int rank = getCurrentRank();
 
         size_t elem_size = type_sizes.at(std::type_index(recv_type));
@@ -324,7 +324,7 @@ public:
         }
     }
 
-    void Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type) override {
+    void Thread_Communicator::Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(recv_type));
 
@@ -348,9 +348,9 @@ public:
         }
     }
 
-    void AllgatherV(
+    void Thread_Communicator::AllgatherV(
         const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, const int recvcounts[],
-        const int displs[], const std::type_info& recv_type) override {
+        const int displs[], const std::type_info& recv_type) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(recv_type));
         {
@@ -380,7 +380,7 @@ public:
         }
     }
 
-    void Broadcast(void* buffer, int count, const std::type_info& type, int root) override {
+    void Thread_Communicator::Broadcast(void* buffer, int count, const std::type_info& type, int root) override {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
 
@@ -410,7 +410,7 @@ public:
         }
     }
 
-    void Alltoall(
+    void Thread_Communicator::Alltoall(
         const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount,
         const std::type_info& recv_type) override {
         int    rank      = getCurrentRank();
@@ -447,7 +447,7 @@ public:
         }
     }
 
-    void AlltoallV(
+    void Thread_Communicator::AlltoallV(
         const void* sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type,
         void* recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type) override {
         int    rank      = getCurrentRank();
@@ -485,19 +485,18 @@ public:
         }
     }
 
-    void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
+    void Thread_Communicator::Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
         //TODO_O
         return;
     } 
 
-    void CommitType(std::type_index type, size_t size) override {
+    void Thread_Communicator::CommitType(std::type_index type, size_t size) override {
         type_sizes[type] = size;
     }
 
-    void FreeType(std::type_index type) override {
+    void Thread_Communicator::FreeType(std::type_index type) override {
         type_sizes.erase(type);
     }
-    double getTime() override {
+    double Thread_Communicator::getTime() override {
         return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     }
-};
