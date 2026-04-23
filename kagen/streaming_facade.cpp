@@ -170,17 +170,22 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
     comm_.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
 
-    MPI_Datatype sint_pair = MPI_DATATYPE_NULL;
-    MPI_Type_contiguous(2, KAGEN_MPI_SINT, &sint_pair);
-    MPI_Type_commit(&sint_pair);
+    //MPI_Datatype sint_pair = MPI_DATATYPE_NULL;
+   // MPI_Type_contiguous(2, KAGEN_MPI_SINT, &sint_pair);
+    //MPI_Type_commit(&sint_pair);
 
     Edgelist recv_bufs(recv_displs.back() + recv_counts.back());
-    //TODO_O add support for sint_pair as well as whatever all these type operations do ^ v
-    MPI_Alltoallv(
+    //TODO_O ponder
+    comm_.CommitType(std::type_index(typeid(std::pair<SInt, SInt>)), sizeof(std::pair<SInt, SInt>));
+    comm_.AlltoallV(
+        send_bufs.data(), send_counts.data(), send_displs.data(), typeid(std::pair<SInt, SInt>), recv_bufs.data(),
+        recv_counts.data(), recv_displs.data(), typeid(std::pair<SInt, SInt>));
+    comm_.FreeType(std::type_index(typeid(std::pair<SInt, SInt>)));
+    /*MPI_Alltoallv(
         send_bufs.data(), send_counts.data(), send_displs.data(), sint_pair, recv_bufs.data(), recv_counts.data(),
         recv_displs.data(), sint_pair, comm_);
 
-    MPI_Type_free(&sint_pair);
+    MPI_Type_free(&sint_pair); */
 
     for (PEID pe = 0; pe < size_; ++pe) {
         std::sort(recv_bufs.begin() + recv_displs[pe], recv_bufs.begin() + recv_displs[pe] + recv_counts[pe]);

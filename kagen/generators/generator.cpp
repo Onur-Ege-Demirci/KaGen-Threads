@@ -19,6 +19,8 @@
 #include "kagen/communicators/communicator_interface.h"
 #include <mpi.h>
 
+#include <typeindex>
+#include <typeinfo>
 #include <algorithm>
 #include <cmath>
 
@@ -315,9 +317,9 @@ void Generator::PermuteVertices([[maybe_unused]] const PGeneratorConfig& config,
 
     auto [send_buffers, edge_weight_send_buffers, vertex_weight_send_buffers] =
         ApplyPermutationAndComputeSendBuffers(graph_, recv_ranges, permute);
-    auto recv_edges          = ExchangeMessageBuffers(std::move(send_buffers), KAGEN_MPI_SINT, comm);
-    auto recv_edge_weights   = ExchangeMessageBuffers(std::move(edge_weight_send_buffers), KAGEN_MPI_SSINT, comm);
-    auto recv_vertex_weights = ExchangeMessageBuffers(std::move(vertex_weight_send_buffers), KAGEN_MPI_SSINT, comm);
+    auto recv_edges          = ExchangeMessageBuffers(std::move(send_buffers), typeid(unsigned long long), comm);
+    auto recv_edge_weights   = ExchangeMessageBuffers(std::move(edge_weight_send_buffers), typeid(SSInt), comm);
+    auto recv_vertex_weights = ExchangeMessageBuffers(std::move(vertex_weight_send_buffers), typeid(SSInt), comm);
 
     switch (desired_representation_) {
         case GraphRepresentation::EDGE_LIST: {

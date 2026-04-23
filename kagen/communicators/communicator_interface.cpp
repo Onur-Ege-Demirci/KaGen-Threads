@@ -34,6 +34,9 @@ void CommInterface::Reduce(inplace_t, void* recvbuf, int count, const std::type_
 void CommInterface::Allreduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) {
     comm->Allreduce(sendbuf, recvbuf, count, type, op);
 }
+void CommInterface::Allreduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op) {
+    comm -> Allreduce(inplace, recvbuf, count, type, op);
+}
 
 void CommInterface::Allgather(const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount, const std::type_info& recv_type) {
     comm->Allgather(sendbuf, sendcount, send_type, recvbuf, recvcount, recv_type);
@@ -66,4 +69,11 @@ double CommInterface::getTime() {
 
 void CommInterface::Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) {
     comm -> Exscan(sendbuf, recvbuf, count, type, op);
+}
+
+void CommInterface::CommitType(std::type_index type, size_t size) {
+    comm -> CommitType(type, size);
+}
+void CommInterface::FreeType(std::type_index type) {
+    comm -> FreeType(type);
 }

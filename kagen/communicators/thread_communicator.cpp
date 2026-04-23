@@ -21,21 +21,10 @@ using std::unordered_map;
 
 // This class is a communicator for threads within the same process, using shared memory and synchronization primitives
 // to implement the communication operations. The number of threads can be increased during runtime. Decreasing isn't
-// supported yet (ETA probably never).
+// supported yet.
 class Thread_Communicator : public Communicator {
 private:
-    static const int                    root = 0;
-    vector<thread>&                     threads;
-    unordered_map<std::thread::id, int> thread_id_to_rank;
-
-    std::vector<const void*>         shared_reduce_buffer; // Each thread writes to [rank]
-    std::vector<void*>               recv_buffers;         // Each thread writes to [rank]
-    std::vector<std::pair<int, int>> allgather_counts;     // For variable-length gatherings
-
-    std::mutex              reduce_mutex;
-    std::condition_variable reduce_cv;
-    size_t                  threads_arrived = 0;
-
+    
     template <typename T>
     static std::function<void(T*, const T*, size_t)> getOp(CommOp op) {
         switch (op) {
@@ -60,13 +49,13 @@ private:
                 };
         }
     }
-    inline static const unordered_map<std::type_index, size_t> type_sizes = {
-        {typeid(int), sizeof(int)},
-        {typeid(double), sizeof(double)},
-        {typeid(unsigned int), sizeof(unsigned int)},
-        {typeid(long long), sizeof(long long)},
-        {typeid(unsigned long long), sizeof(unsigned long long)},
-        {typeid(long double), sizeof(long double)}};
+    unordered_map<std::type_index, size_t> type_sizes = {
+        {std::type_index(typeid(int)), sizeof(int)},
+        {std::type_index(typeid(double)), sizeof(double)},
+        {std::type_index(typeid(unsigned int)), sizeof(unsigned int)},
+        {std::type_index(typeid(long long)), sizeof(long long)},
+        {std::type_index(typeid(unsigned long long)), sizeof(unsigned long long)},
+        {std::type_index(typeid(long double)), sizeof(long double)}};
     // Helper to apply operation with automatic type dispatch from type_info
     static void applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count) {
         if (type == typeid(int)) {
@@ -126,7 +115,7 @@ private:
     }
 
 public:
-    int addThreadToCommunicator(thread& t) {
+    int Thread_Communicator::addThreadToCommunicator(std::thread& t) {
         int rank = threads.size();
         threads.push_back(t);
         thread_id_to_rank[t.get_id()] = rank;
@@ -142,7 +131,7 @@ public:
         auto thread_id = std::this_thread::get_id();
         *rank          = thread_id_to_rank[thread_id];
     }
-    ~Thread_Communicator() {
+    ~Thread_Communicator() override {
         for (size_t i = 0; i < recv_buffers.size(); i++) {
             recv_buffers[i] = nullptr;
         }
@@ -501,6 +490,13 @@ public:
         return;
     } 
 
+    void CommitType(std::type_index type, size_t size) override {
+        type_sizes[type] = size;
+    }
+
+    void FreeType(std::type_index type) override {
+        type_sizes.erase(type);
+    }
     double getTime() override {
         return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     }

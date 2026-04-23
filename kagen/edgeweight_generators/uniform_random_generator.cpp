@@ -115,12 +115,15 @@ void GenerateEdgeWeightsImpl(
             }
         }
     }
-    //TODO_O huh?
-    MPI_Datatype edgedata_mpi_type;
+    //TODO_O possible issue?
+    comm_.CommitType(std::type_index(typeid(EdgeData)), sizeof(EdgeData));
+    auto recv_buf = ExchangeMessageBuffers(message_buffers, typeid(EdgeData), comm_);
+    comm_.FreeType(std::type_index(typeid(EdgeData)));
+   /* MPI_Datatype edgedata_mpi_type;
     MPI_Type_contiguous(sizeof(EdgeData), MPI_BYTE, &edgedata_mpi_type);
     MPI_Type_commit(&edgedata_mpi_type);
     auto recv_buf = ExchangeMessageBuffers(std::move(message_buffers), edgedata_mpi_type, comm_);
-    MPI_Type_free(&edgedata_mpi_type);
+    MPI_Type_free(&edgedata_mpi_type);*/
 
     // add received cut edges into edge_weight storage
     for (const auto& [u, v, weight]: recv_buf) {

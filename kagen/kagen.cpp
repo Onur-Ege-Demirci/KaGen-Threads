@@ -392,7 +392,7 @@ std::ostream& operator<<(std::ostream& out, const GraphRepresentation representa
 SInt Graph::NumberOfLocalVertices() const {
     return vertex_range.second - vertex_range.first;
 }
-
+//TODO_O obsolete methods?
 SInt Graph::NumberOfGlobalVertices() const {
     SInt number_vertices = NumberOfLocalVertices();
     MPI_Allreduce(MPI_IN_PLACE, &number_vertices, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);

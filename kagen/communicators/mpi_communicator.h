@@ -36,5 +36,9 @@ class MPI_Communicator : public Communicator {
                    void* recvbuf, const int recvcounts[], const int rdispls[],
                    const std::type_info& recv_type) override;
     void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override; 
+
+    void CommitType(std::type_index type, size_t size) override;
+    void FreeType(std::type_index type) override;
+    
     double getTime() override;
 };

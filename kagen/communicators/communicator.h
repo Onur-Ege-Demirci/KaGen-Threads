@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 #include <type_traits>
-
+#include <typeindex>
 
 //inplace_t is an empty class type used to indicate that reduce / allreduce should be performed inplace.
 struct inplace_t {};
@@ -22,6 +22,8 @@ class Communicator {
         virtual void GetWorldSize(int* size) = 0;
         virtual void barrier() = 0;
         virtual void abort(int code) = 0;
+        virtual void CommitType(std::type_index type, size_t size) = 0;
+        virtual void FreeType(std::type_index type) = 0;
         virtual void Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) = 0;
         virtual void Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) = 0;
         virtual void Allreduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) = 0;

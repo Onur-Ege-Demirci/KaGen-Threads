@@ -8,17 +8,22 @@
 class MPI_Communicator : public Communicator {
     private:
         MPI_Comm comm;
-        inline static const std::unordered_map<std::type_index, MPI_Datatype> table = {
-            {typeid(int), MPI_INT},
-            {typeid(double), MPI_DOUBLE},
-            {typeid(unsigned int), MPI_UNSIGNED},
-            {typeid(long long), MPI_LONG_LONG},
-            {typeid(unsigned long long), MPI_UNSIGNED_LONG_LONG},
-            {typeid(long double), MPI_LONG_DOUBLE} 
+        std::unordered_map<std::type_index, MPI_Datatype> table = {
+            {std::type_index(typeid(int)), MPI_INT},
+            {std::type_index(typeid(double)), MPI_DOUBLE},
+            {std::type_index(typeid(unsigned int)), MPI_UNSIGNED},
+            {std::type_index(typeid(long long)), MPI_LONG_LONG},
+            {std::type_index(typeid(unsigned long long)), MPI_UNSIGNED_LONG_LONG},
+            {std::type_index(typeid(long double)), MPI_LONG_DOUBLE} 
 };
-        static MPI_Datatype getMPIType(const std::type_info& type) {
+        MPI_Datatype getMPIType(const std::type_info& type) {
+            return table.at(std::type_index(type));
+        }
+
+        MPI_Datatype getMPIType(std::type_index type) {
             return table.at(type);
         }
+
         static MPI_Op getMPIOp(CommOp op) {
             switch(op){
                 case CommOp::LOR:
@@ -97,6 +102,19 @@ class MPI_Communicator : public Communicator {
 
         void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
             MPI_Exscan(sendbuf, recvbuf, count, getMPIType(type), getMPIOp(op), comm);
+        }
+        void CommitType(std::type_index type, size_t size) override {
+            MPI_Datatype mpi_type;
+            MPI_Type_contiguous(size, MPI_BYTE, &mpi_type);
+            MPI_Type_commit(&mpi_type);
+            table[type] = mpi_type;
+        }
+
+
+        //TODO_O does this even work? 
+        void FreeType(std::type_index type) override {
+            MPI_Type_free(&table[type]);
+            table.erase(type);
         }
 
         double getTime() override {

@@ -8,6 +8,7 @@
 #include <numeric>
 #include <type_traits>
 #include <typeinfo>
+#include <typeindex>
 
 namespace kagen {
 template <typename T>
@@ -102,7 +103,7 @@ inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_ra
 
 template <typename T>
 std::vector<T> ExchangeMessageBuffers(
-    std::unordered_map<PEID, std::vector<T>> message_buffers, MPI_Datatype mpi_datatype, CommInterface& comm) {
+    std::unordered_map<PEID, std::vector<T>> message_buffers, const std::type_info& datatype, CommInterface& comm) {
     PEID rank, size;
     comm.GetRank(&rank);
     comm.GetSize(&size);
@@ -131,11 +132,13 @@ std::vector<T> ExchangeMessageBuffers(
         message_buffers[i].resize(0);
     }
     recv_buf.resize(total_recv_count);
-    
+    comm.AlltoallV(
+        send_buf.data(), send_counts.data(), send_displs.data(), datatype, recv_buf.data(), recv_counts.data(),
+        recv_displs.data(), datatype);
     //TODO_O variable mpi datatype oh dear.
-    MPI_Alltoallv(
-        send_buf.data(), send_counts.data(), send_displs.data(), mpi_datatype, recv_buf.data(), recv_counts.data(),
-        recv_displs.data(), mpi_datatype, comm);
+    //MPI_Alltoallv(
+       // send_buf.data(), send_counts.data(), send_displs.data(), mpi_datatype, recv_buf.data(), recv_counts.data(),
+        //recv_displs.data(), mpi_datatype, comm);
     send_buf.clear();
     send_buf.resize(0);
     return recv_buf;

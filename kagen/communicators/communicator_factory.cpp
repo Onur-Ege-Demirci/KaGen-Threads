@@ -12,13 +12,9 @@
 using std::vector;
 using std::thread;
 
-enum class CommunicatorType {
-    MPI, 
-    THREAD,
-    HYBRID
-};
 
-//TODO_O write a header file for mpi communicator.
+
+
 
 
 CommInterface getMPICommInterface() {
@@ -39,6 +35,7 @@ std::shared_ptr<Communicator> getThreadCommunicator() {
 //Add a thread to to communicator and get the appropriate CommInterface
 CommInterface addThreadToCommunicator(std::shared_ptr<Thread_Communicator> comm, thread& t) {
     int rank = comm -> addThreadToCommunicator(t);
-    return CommInterface(rank, comm);
+    CommInterface interface = CommInterface(rank, comm);
+    return interface;
 }
 

@@ -1,10 +1,38 @@
 #include "kagen/communicators/communicator.h"
 #include <thread>
+#include <algorithm>
+#include <barrier>
+#include <condition_variable>
+#include <cstring>
+#include <map>
+#include <mutex>
+#include <thread>
+#include <typeindex>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+using std::thread;
+using std::vector;
+using std::unordered_map;
+
 class Thread_Communicator : public Communicator {
+    private:
+        static const int                    root = 0;
+        vector<std::reference_wrapper<thread>>                     threads;
+        unordered_map<std::thread::id, int> thread_id_to_rank;
+
+        std::vector<const void*>         shared_reduce_buffer; // Each thread writes to [rank]
+        std::vector<void*>               recv_buffers;         // Each thread writes to [rank]
+        std::vector<std::pair<int, int>> allgather_counts;     // For variable-length gatherings
+
+        std::mutex              reduce_mutex;
+        std::condition_variable reduce_cv;
+        size_t                  threads_arrived = 0;
     public:
     int addThreadToCommunicator(std::thread& t);
 
-    ~Thread_Communicator();
+    ~Thread_Communicator() override;
 
     void GetWorldRank(int* rank) override;
     void GetWorldSize(int* size) override;
@@ -45,6 +73,7 @@ class Thread_Communicator : public Communicator {
                    void* recvbuf, const int recvcounts[], const int rdispls[],
                    const std::type_info& recv_type) override;
     void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override; 
-    
+    void CommitType(std::type_index type, size_t size) override;
+    void FreeType(std::type_index type) override;
     double getTime() override;
 };

@@ -12,6 +12,8 @@ class CommInterface {
         void GetRank(int*);
         void GetSize(int*);
         void barrier();
+        void CommitType(std::type_index type, size_t size);
+        void FreeType(std::type_index type);
         void abort(int code);
         void Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root);
         void Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root);

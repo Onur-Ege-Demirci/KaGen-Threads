@@ -41,7 +41,7 @@ void AddNonlocalReverseEdges(
 
     {
         // exchange edges
-        auto recv_buf = ExchangeMessageBuffers(message_buffers_edges, MPI_UINT64_T, comm);
+        auto recv_buf = ExchangeMessageBuffers(message_buffers_edges, typeid(uint64_t), comm);
 
         for (std::size_t i = 0; i < recv_buf.size(); i += 2) {
             edge_list.emplace_back(recv_buf[i + 1], recv_buf[i]);
@@ -49,7 +49,7 @@ void AddNonlocalReverseEdges(
     }
     {
         // exchange weights
-        auto recv_buf = ExchangeMessageBuffers(message_buffers_weights, MPI_INT64_T, comm);
+        auto recv_buf = ExchangeMessageBuffers(message_buffers_weights, typeid(int64_t), comm);
 
         for (std::size_t i = 0; i < recv_buf.size(); ++i) {
             edge_weights.emplace_back(recv_buf[i]);

@@ -11,6 +11,7 @@
 #include "kagen/in_memory_facade.h"
 #include "kagen/communicators/communicator_interface.h"
 #include "kagen/communicators/communicator.h"
+#include "kagen/communicators/communicator_factory.h"
 
 #include "CLI11.h"
 #include <iostream>
@@ -552,7 +553,7 @@ int main(int argc, char* argv[]) {
     CLI::App         app("KaGen: Karlsruhe Graph Generator");
     SetupCommandLineArguments(app, config);
     CLI11_PARSE(app, argc, argv);
-    CommInterface comm;
+    //CommInterface comm;
     // Coordinates output format implies --coordinates
     if (std::find(config.output_graph.formats.begin(), config.output_graph.formats.end(), FileFormat::COORDINATES)
         != config.output_graph.formats.end()) {
@@ -567,8 +568,8 @@ int main(int argc, char* argv[]) {
 
     //TODO_O re-add MPI support here (eventually).
 
-    std::vector<std::thread> threads(thread_count);
-    CommInterface comm_interface = ....
+    //std::vector<std::thread> threads(thread_count);
+    CommInterface comm_interface = getMPICommInterface();
 
     GenerateInMemoryToDisk(config, comm_interface);
 

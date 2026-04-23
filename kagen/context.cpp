@@ -250,7 +250,7 @@ Options ParseOptionString(const std::string& options) {
 }
 } // namespace
 
-PGeneratorConfig CreateConfigFromString(const std::string& options_str, PGeneratorConfig config) {
+PGeneratorConfig CreateConfigFromString(const std::string& options_str, PGeneratorConfig config, CommInterface& comm) {
     const auto options = ParseOptionString(options_str);
 
     // Used to decide whether a boolean value is true
@@ -459,7 +459,7 @@ PGeneratorConfig CreateConfigFromString(const std::string& options_str, PGenerat
     }
 
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    comm.GetRank(&rank);
     if (rank == ROOT && !option_keys.empty()) {
         std::stringstream sstr;
         sstr << "WARNING: unused options: ";
