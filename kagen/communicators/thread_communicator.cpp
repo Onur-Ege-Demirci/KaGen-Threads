@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
+#include "thread_communicator.h"
 using std::thread;
 using std::vector;
 
