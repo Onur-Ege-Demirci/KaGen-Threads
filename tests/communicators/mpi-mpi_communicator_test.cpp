@@ -1,61 +1,279 @@
-#include <gtest/gtest.h>
+#include "kagen/communicators/communicator.h"
+#include "kagen/communicators/communicator_interface.h"
 #include "kagen/communicators/mpi_communicator.h"
 #include "kagen/communicators/thread_communicator.h"
-#include <vector>
-#include "mpi.h"
-using namespace std;
-Thread_Communicator thread_comm;
 
-vector<vector<int>> reduce_test_data = {
-    {1, 2, 3, 4},
-    {5, 6, 7, 8},
-    {9, 10, 11, 12},
-    {13, 14, 15, 16}
-}
-int test_count = 4;
-vector<void*> recv_buffers;
-void threadTest(int rank, int size) {
-    vector<void*> thread_recvbufs;
-    thread_recvbufs.emplace_back(malloc(reduce_test_data[rank].size() * sizeof(int)));
-    thread_comm.Reduce(reduce_test_data[rank].data(), thread_recvbufs[0], CommOp::SUM, 0);
-    if (rank == 0) {
-            int* int_recvbuf = static_cast<int*>(thread_recvbufs[0]);
-            int* int_mpi_recvbuf = static_cast<int*>(recv_buffers[0]);
-            for (size_t i = 0; i < reduce_test_data[rank].size(); i++) {
-                EXPECT_EQ(int_recvbuf[i], int_mpi_recvbuf[i]);
-            }
-    }
+#include <gtest/gtest.h>
+#include <mpi.h>
+
+#include <typeindex>
+
+using namespace kagen;
+
+class MPICommTest : public ::testing::Test {
+protected:
+    CommInterface* comm;
+    void           SetUp() override {
+       
+        comm_interface = new CommInterface(0, std::make_shared<MPI_Communicator>());
         
-    
-    thread_comm.barrier();
-    vector<int> inplace_receive_buffer(reduce_test_data[rank].size());
-    thread_comm.Reduce(inplace, inplace_receive_buffer.data(), CommOp::SUM, 0);
-    thread_comm.barrier();
-    thread_comm.Allreduce(reduce_test_data[rank].data(), thread_recvbufs[1], CommOp::SUM);
-    thread_comm.barrier();
-    inplace_receive_buffer = vector<int>(reduce_test_data[rank].size());
-    thread_comm.Allreduce(inplace, inplace_receive_buffer.data(), CommOp::SUM);
-    thread_comm.barrier();
-    
+    }
 
+    void TearDown() override {
+        delete comm;
+    }
+    
+};
+TEST_F(MPICommTest, GetWorldRankAndSize) {
+    int rank = -1, size = -1;
+
+    comm->GetWorldRank(&rank);
+    comm->GetWorldSize(&size);
+
+    int mpi_rank, mpi_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    EXPECT_EQ(rank, mpi_rank);
+    EXPECT_EQ(size, mpi_size);
 }
 
-int main() {
-    MPI_Init();
-    int rank, size = 4;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);   
-    ::testing::InitGoogleTest();
-    for ( int i = 0 ; i< test_count; i++) {
-        int* recvbuf = static_cast<int*>(malloc(reduce_test_data[rank].size() * sizeof(int)));
-        recv_buffers.emplace_back(recvbuf);
+TEST_F(MPICommTest, BarrierWorks) {
+    auto start = MPI_Wtime();
+
+    comm->barrier();
+
+    auto end = MPI_Wtime();
+
+    EXPECT_GE(end, start);
+}
+TEST_F(MPICommTest, AllreduceSumInt) {
+    std::vector<int> send(8);
+    std::vector<int> recv(8, 0);
+
+    int rank;
+    comm->GetWorldRank(&rank);
+
+    for (int i = 0; i < 8; i++) {
+        send[i] = rank + 1; // deterministic
     }
-    MPI_Reduce(reduce_test_data[rank].data(), recv_buffers[0], reduce_test_data[rank].size(), MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(reduce_test_data[rank].data(), recv_buffers[1], reduce_test_data[rank].size(), MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Finalize();
-   
-    vector <thread> threads(size);
-    for (int t = 0; t < size; t++) {
-        threads[t] = thread(threadTest, t, size);
-        thread_comm.addThreadToCommunicator(threads[t]);
+
+    comm->Allreduce(
+        send.data(),
+        recv.data(),
+        8,
+        typeid(int),
+        CommOp::SUM
+    );
+
+    int expected_sum = 0;
+    int size;
+    comm->GetWorldSize(&size);
+
+    expected_sum = (size * (size + 1)) / 2; // sum of 1..size
+
+    for (int i = 0; i < 8; i++) {
+        EXPECT_EQ(recv[i], expected_sum);
+    }
+}
+
+TEST_F(MPICommTest, AllreduceInplace) {
+    std::vector<int> data(10);
+
+    int rank;
+    comm->GetWorldRank(&rank);
+
+    for (int i = 0; i < 10; i++) {
+        data[i] = rank + 1;
+    }
+
+    comm->Allreduce(
+        inplace_t{},
+        data.data(),
+        10,
+        typeid(int),
+        CommOp::SUM
+    );
+
+    int size;
+    comm->GetWorldSize(&size);
+    int expected = (size * (size + 1)) / 2;
+
+    for (auto v : data) {
+        EXPECT_EQ(v, expected);
+    }
+}
+
+TEST_F(MPICommTest, Broadcast) {
+    std::vector<int> buffer(5);
+
+    int rank;
+    comm->GetWorldRank(&rank);
+
+    if (rank == 0) {
+        for (int i = 0; i < 5; i++) buffer[i] = i * 10;
+    }
+
+    comm->Broadcast(buffer.data(), 5, typeid(int), 0);
+
+    for (int i = 0; i < 5; i++) {
+        EXPECT_EQ(buffer[i], i * 10);
+    }
+}
+
+TEST_F(MPICommTest, Allgather) {
+    std::vector<int> send(3);
+    std::vector<int> recv(3 * size); // will fail if more ranks → adjust in real test
+
+    int rank;
+    comm->GetWorldRank(&rank);
+
+    for (int i = 0; i < 3; i++) {
+        send[i] = rank;
+    }
+
+    comm->Allgather(
+        send.data(),
+        3,
+        typeid(int),
+        recv.data(),
+        3,
+        typeid(int)
+    );
+
+    // Each rank contributes its value
+    for (int r = 0; r < size; r++) {
+        for (int i = 0; i < 3; i++) {
+            EXPECT_EQ(recv[r * 3 + i], r);
+        }
+    }
+}
+
+TEST_F(MPICommTest, Alltoall) {
+    int size;
+    comm->GetWorldSize(&size);
+
+    std::vector<int> send(size);
+    std::vector<int> recv(size);
+
+    int rank;
+    comm->GetWorldRank(&rank);
+
+    for (int i = 0; i < size; i++) {
+        send[i] = rank;
+    }
+
+    comm->Alltoall(
+        send.data(),
+        1,
+        typeid(int),
+        recv.data(),
+        1,
+        typeid(int)
+    );
+
+    for (int i = 0; i < size; i++) {
+        EXPECT_EQ(recv[i], i);
+    }
+}
+
+TEST_F(MPICommTest, ExscanSum) {
+    int send = 1;
+    int recv = 0;
+
+    int rank;
+    comm->GetWorldRank(&rank);
+
+    comm->Exscan(
+        &send,
+        &recv,
+        1,
+        typeid(int),
+        CommOp::SUM
+    );
+
+    if (rank == 0) {
+        EXPECT_EQ(recv, 0);
+    } else {
+        EXPECT_EQ(recv, rank);
+    }
+}
+
+TEST_F(MPICommTest, GetTimeMonotonic) {
+    double t1 = comm->getTime();
+    double t2 = comm->getTime();
+
+    EXPECT_LE(t1, t2);
+}
+
+TEST_F(MPICommTest, ReduceSum) {
+    int rank, size;
+    comm->GetWorldRank(&rank);
+    comm->GetWorldSize(&size);
+
+    const int count = 8;
+
+    std::vector<int> send(count);
+    std::vector<int> recv(count, -1);
+
+    // each rank contributes (rank + 1)
+    for (int i = 0; i < count; i++) {
+        send[i] = rank + 1;
+    }
+
+    int root = 0;
+
+    comm->Reduce(
+        send.data(),
+        recv.data(),
+        count,
+        typeid(int),
+        CommOp::SUM,
+        root
+    );
+
+    if (rank == root) {
+        int expected = 0;
+        for (int r = 0; r < size; r++) {
+            expected += (r + 1);
+        }
+
+        for (int i = 0; i < count; i++) {
+            EXPECT_EQ(recv[i], expected);
+        }
+    }
+}
+
+TEST_F(MPICommTest, ReduceInplaceSum) {
+    int rank, size;
+    comm->GetWorldRank(&rank);
+    comm->GetWorldSize(&size);
+
+    const int count = 8;
+
+    std::vector<int> data(count);
+
+    // initialize each rank differently
+    for (int i = 0; i < count; i++) {
+        data[i] = 1; // simple: all ones everywhere
+    }
+
+    int root = 0;
+
+    comm->Reduce(
+        inplace_t{},
+        data.data(),
+        count,
+        typeid(int),
+        CommOp::SUM,
+        root
+    );
+
+    if (rank == root) {
+        int expected = size * 1; // each rank contributed 1
+
+        for (int i = 0; i < count; i++) {
+            EXPECT_EQ(data[i], expected);
+        }
     }
 }

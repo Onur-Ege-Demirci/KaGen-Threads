@@ -57,7 +57,7 @@ using std::unordered_map;
         {std::type_index(typeid(unsigned long long)), sizeof(unsigned long long)},
         {std::type_index(typeid(long double)), sizeof(long double)}};
     // Helper to apply operation with automatic type dispatch from type_info
-    static void Thread_Communicator::applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count) {
+    void Thread_Communicator::applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count) {
         if (type == typeid(int)) {
             auto       op_func = getOp<int>(op);
             int*       d       = static_cast<int*>(dest);
@@ -147,8 +147,8 @@ using std::unordered_map;
     void Thread_Communicator::abort(int code) {
         std::terminate();
     }
-    void
-    Thread_Communicator::Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) {
+    //TODO_O
+    void Thread_Communicator::Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
         {
@@ -163,7 +163,6 @@ using std::unordered_map;
 
                 // Initialize recvbuf with root's data
                 std::memcpy(recvbuf, shared_reduce_buffer[0], count * elem_size);
-
                 // Reduce with each thread's data
                 for (size_t t = 1; t < threads.size(); t++) {
                     applyOp(op, type, recvbuf, shared_reduce_buffer[t], count);
@@ -177,8 +176,8 @@ using std::unordered_map;
             }
         }
     }
-
-    void Thread_Communicator::Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) override {
+    //TODO_O
+    void Thread_Communicator::Reduce(inplace_t, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
 
@@ -205,7 +204,7 @@ using std::unordered_map;
             }
         }
     }
-
+    //TODO_O
     void Thread_Communicator::Allreduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
@@ -292,13 +291,14 @@ using std::unordered_map;
         {
             std::unique_lock<std::mutex> lock(reduce_mutex);
             shared_reduce_buffer[rank] = sendbuf;
+            allgather_counts[rank]     = {sendcount, recvcount};
             threads_arrived++;
 
             if (rank == root) {
                 if (threads_arrived != threads.size()) {
                     reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
                 }
-
+                
                 // Gather all data into the receive buffer
                 size_t offset = 0;
                 for (size_t t = 0; t < threads.size(); t++) {
@@ -323,7 +323,7 @@ using std::unordered_map;
             }
         }
     }
-
+    //TODO_O
     void Thread_Communicator::Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(recv_type));
@@ -347,7 +347,7 @@ using std::unordered_map;
             }
         }
     }
-
+    //TODO_O
     void Thread_Communicator::AllgatherV(
         const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, const int recvcounts[],
         const int displs[], const std::type_info& recv_type) {
@@ -379,40 +379,39 @@ using std::unordered_map;
             }
         }
     }
-
-    void Thread_Communicator::Broadcast(void* buffer, int count, const std::type_info& type, int root) override {
+    
+    void Thread_Communicator::Broadcast(void* buffer, int count, const std::type_info& type, int root) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));
 
         {
             std::unique_lock<std::mutex> lock(reduce_mutex);
-            if (rank == root) {
-                shared_reduce_buffer[rank] = buffer;
-            }
+            shared_reduce_buffer[rank] = buffer;
             threads_arrived++;
 
             if (rank == root) {
                 if (threads_arrived != threads.size()) {
                     reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
                 }
+                for(size_t t = 0; t < threads.size(); t++) {
+                    if (t != root && recv_buffers[t] != nullptr) {
+                        std::memcpy(recv_buffers[t], buffer, count * elem_size);
+                    }
+                }
                 threads_arrived = 0;
                 reduce_cv.notify_all();
-            } else {
-                reduce_cv.wait(lock, [&] { return threads_arrived == threads.size(); });
-                // Copy from root's buffer
-                std::memcpy(buffer, shared_reduce_buffer[root], count * elem_size);
-                threads_arrived--;
-                if (threads_arrived == 0) {
-                    reduce_cv.notify_all();
-                }
+                flush_buffer();
+
+            } 
+            else {
+                reduce_cv.wait(lock, [&] { return threads_arrived == 0; });
             }
-            flush_buffer();
         }
     }
-
+    //TODO_O
     void Thread_Communicator::Alltoall(
         const void* sendbuf, int sendcount, const std::type_info& send_type, void* recvbuf, int recvcount,
-        const std::type_info& recv_type) override {
+        const std::type_info& recv_type) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(recv_type));
         int    msg_size  = static_cast<int>(sendcount / threads.size());
@@ -446,10 +445,10 @@ using std::unordered_map;
             }
         }
     }
-
+    //TODO_O
     void Thread_Communicator::AlltoallV(
         const void* sendbuf, const int sendcounts[], const int sdispls[], const std::type_info& send_type,
-        void* recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type) override {
+        void* recvbuf, const int recvcounts[], const int rdispls[], const std::type_info& recv_type) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(recv_type));
         {
@@ -484,19 +483,19 @@ using std::unordered_map;
             }
         }
     }
-
-    void Thread_Communicator::Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) override {
+    //TODO_O
+    void Thread_Communicator::Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op) {
         //TODO_O
         return;
     } 
 
-    void Thread_Communicator::CommitType(std::type_index type, size_t size) override {
+    void Thread_Communicator::CommitType(std::type_index type, size_t size) {
         type_sizes[type] = size;
     }
 
-    void Thread_Communicator::FreeType(std::type_index type) override {
+    void Thread_Communicator::FreeType(std::type_index type)  {
         type_sizes.erase(type);
     }
-    double Thread_Communicator::getTime() override {
+    double Thread_Communicator::getTime()  {
         return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     }

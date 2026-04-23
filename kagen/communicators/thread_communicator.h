@@ -29,6 +29,13 @@ class Thread_Communicator : public Communicator {
         std::mutex              reduce_mutex;
         std::condition_variable reduce_cv;
         size_t                  threads_arrived = 0;
+
+        template <typename T>
+        std::function<void(T*, const T*, size_t)> getOp(CommOp op);
+        void applyOp(CommOp op, const std::type_info& type, void* dest, const void* src, size_t count);
+        void flush_buffer();
+        int getCurrentRank();
+
     public:
     int addThreadToCommunicator(std::thread& t);
 

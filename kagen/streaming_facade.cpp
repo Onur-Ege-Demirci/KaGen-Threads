@@ -13,12 +13,14 @@
 
 namespace kagen {
 StreamingGenerator::StreamingGenerator(const std::string& options, const PEID chunks_per_pe, CommInterface& comm)
-    : config_(CreateConfigFromString(options)),
-      comm_(comm),
+    : comm_(comm),
       factory_(CreateGeneratorFactory(config_.generator)) {
     comm_.GetSize(&size_);
     comm_.GetRank(&rank_);
 
+    bool isRoot = rank_ == ROOT;
+
+    config_ = CreateConfigFromString(options, isRoot);
     const PEID streaming_size = chunks_per_pe * size_;
     const PEID streaming_rank = chunks_per_pe * rank_;
 

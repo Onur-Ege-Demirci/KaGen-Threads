@@ -531,7 +531,10 @@ namespace {
 auto GenericGenerateFromOptionString(
     const std::string& options_str, PGeneratorConfig base_config, const GraphRepresentation representation,
     CommInterface& comm) {
-    return GenerateInMemory(CreateConfigFromString(options_str, base_config), representation, comm);
+    int rank = 0;
+    comm.GetRank(&rank);
+    //TODO_O I do not like the explicit rank == 0 check here but definitions.h depends on this file.
+    return GenerateInMemory(CreateConfigFromString(options_str, rank == 0, base_config), representation, comm);
 }
 } // namespace
 

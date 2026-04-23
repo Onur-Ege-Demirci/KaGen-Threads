@@ -22,7 +22,7 @@
 
 int size;
 int rank;
-
+bool isRoot;
 
 using namespace kagen;
 
@@ -211,7 +211,7 @@ This is mostly useful for experimental graph generators or when using KaGen to l
             "options",
             "Generate graph as specified by an options string; see library documentation for further details");
         cmd->add_option_function<std::string>(
-               "options", [&config](const std::string& options) { config = CreateConfigFromString(options, config); })
+               "options", [&config](const std::string& options) { config = CreateConfigFromString(options, isRoot, config); })
             ->required();
     }
 
@@ -551,6 +551,7 @@ int main(int argc, char* argv[]) {
     // Parse parameters
     PGeneratorConfig config;
     CLI::App         app("KaGen: Karlsruhe Graph Generator");
+    isRoot = true;
     SetupCommandLineArguments(app, config);
     CLI11_PARSE(app, argc, argv);
     //CommInterface comm;

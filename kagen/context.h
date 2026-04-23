@@ -180,7 +180,7 @@ std::unordered_map<std::string, OutputHeader> GetOutputHeaderMap();
 std::ostream& operator<<(std::ostream& out, OutputHeader output_header);
 std::ostream& operator<<(std::ostream& out, const PGeneratorConfig& config);
 
-PGeneratorConfig CreateConfigFromString(const std::string& options_str, PGeneratorConfig config = {});
+PGeneratorConfig CreateConfigFromString(const std::string& options_str, bool isRoot = false, PGeneratorConfig config = {});
 
 template <typename Enum>
 std::string StringifyEnum(Enum value) {

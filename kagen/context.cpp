@@ -250,7 +250,7 @@ Options ParseOptionString(const std::string& options) {
 }
 } // namespace
 
-PGeneratorConfig CreateConfigFromString(const std::string& options_str, PGeneratorConfig config, CommInterface& comm) {
+PGeneratorConfig CreateConfigFromString(const std::string& options_str, bool isRoot, PGeneratorConfig config) {
     const auto options = ParseOptionString(options_str);
 
     // Used to decide whether a boolean value is true
@@ -458,9 +458,7 @@ PGeneratorConfig CreateConfigFromString(const std::string& options_str, PGenerat
             get_sint_or_default("vertexweights_range_end", config.vertex_weights.weight_range_end);
     }
 
-    int rank;
-    comm.GetRank(&rank);
-    if (rank == ROOT && !option_keys.empty()) {
+    if (isRoot && !option_keys.empty()) {
         std::stringstream sstr;
         sstr << "WARNING: unused options: ";
         for (const auto& key: option_keys) {
