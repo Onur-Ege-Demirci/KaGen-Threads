@@ -14,21 +14,19 @@ class MPICommTest : public ::testing::Test {
 protected:
     CommInterface* comm;
     void           SetUp() override {
-       
-        comm_interface = new CommInterface(0, std::make_shared<MPI_Communicator>());
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        comm = new CommInterface(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
         
     }
 
-    void TearDown() override {
-        delete comm;
-    }
     
 };
 TEST_F(MPICommTest, GetWorldRankAndSize) {
     int rank = -1, size = -1;
 
-    comm->GetWorldRank(&rank);
-    comm->GetWorldSize(&size);
+    comm->GetRank(&rank);
+    comm->GetSize(&size);
 
     int mpi_rank, mpi_size;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
@@ -52,7 +50,7 @@ TEST_F(MPICommTest, AllreduceSumInt) {
     std::vector<int> recv(8, 0);
 
     int rank;
-    comm->GetWorldRank(&rank);
+    comm->GetRank(&rank);
 
     for (int i = 0; i < 8; i++) {
         send[i] = rank + 1; // deterministic
@@ -68,7 +66,7 @@ TEST_F(MPICommTest, AllreduceSumInt) {
 
     int expected_sum = 0;
     int size;
-    comm->GetWorldSize(&size);
+    comm->GetSize(&size);
 
     expected_sum = (size * (size + 1)) / 2; // sum of 1..size
 
@@ -81,7 +79,7 @@ TEST_F(MPICommTest, AllreduceInplace) {
     std::vector<int> data(10);
 
     int rank;
-    comm->GetWorldRank(&rank);
+    comm->GetRank(&rank);
 
     for (int i = 0; i < 10; i++) {
         data[i] = rank + 1;
@@ -96,7 +94,7 @@ TEST_F(MPICommTest, AllreduceInplace) {
     );
 
     int size;
-    comm->GetWorldSize(&size);
+    comm->GetSize(&size);
     int expected = (size * (size + 1)) / 2;
 
     for (auto v : data) {
@@ -108,7 +106,7 @@ TEST_F(MPICommTest, Broadcast) {
     std::vector<int> buffer(5);
 
     int rank;
-    comm->GetWorldRank(&rank);
+    comm->GetRank(&rank);
 
     if (rank == 0) {
         for (int i = 0; i < 5; i++) buffer[i] = i * 10;
@@ -122,11 +120,13 @@ TEST_F(MPICommTest, Broadcast) {
 }
 
 TEST_F(MPICommTest, Allgather) {
+    int size;
+    comm -> GetSize(&size);
     std::vector<int> send(3);
     std::vector<int> recv(3 * size); // will fail if more ranks → adjust in real test
 
     int rank;
-    comm->GetWorldRank(&rank);
+    comm->GetRank(&rank);
 
     for (int i = 0; i < 3; i++) {
         send[i] = rank;
@@ -151,13 +151,13 @@ TEST_F(MPICommTest, Allgather) {
 
 TEST_F(MPICommTest, Alltoall) {
     int size;
-    comm->GetWorldSize(&size);
+    comm->GetSize(&size);
 
     std::vector<int> send(size);
     std::vector<int> recv(size);
 
     int rank;
-    comm->GetWorldRank(&rank);
+    comm->GetRank(&rank);
 
     for (int i = 0; i < size; i++) {
         send[i] = rank;
@@ -182,7 +182,7 @@ TEST_F(MPICommTest, ExscanSum) {
     int recv = 0;
 
     int rank;
-    comm->GetWorldRank(&rank);
+    comm->GetRank(&rank);
 
     comm->Exscan(
         &send,
@@ -208,8 +208,8 @@ TEST_F(MPICommTest, GetTimeMonotonic) {
 
 TEST_F(MPICommTest, ReduceSum) {
     int rank, size;
-    comm->GetWorldRank(&rank);
-    comm->GetWorldSize(&size);
+    comm->GetRank(&rank);
+    comm->GetSize(&size);
 
     const int count = 8;
 
@@ -246,8 +246,8 @@ TEST_F(MPICommTest, ReduceSum) {
 
 TEST_F(MPICommTest, ReduceInplaceSum) {
     int rank, size;
-    comm->GetWorldRank(&rank);
-    comm->GetWorldSize(&size);
+    comm->GetRank(&rank);
+    comm->GetSize(&size);
 
     const int count = 8;
 
@@ -259,8 +259,8 @@ TEST_F(MPICommTest, ReduceInplaceSum) {
     }
 
     int root = 0;
-
-    comm->Reduce(
+    if(rank == root) {
+        comm->Reduce(
         inplace_t{},
         data.data(),
         count,
@@ -268,6 +268,17 @@ TEST_F(MPICommTest, ReduceInplaceSum) {
         CommOp::SUM,
         root
     );
+    } else {
+        comm->Reduce(
+        data.data(),
+        data.data(),
+        count,
+        typeid(int),
+        CommOp::SUM,
+        root
+    );
+    }
+    
 
     if (rank == root) {
         int expected = size * 1; // each rank contributed 1

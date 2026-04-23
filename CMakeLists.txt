@@ -252,6 +252,7 @@ add_library(KaGen::cKaGen ALIAS KaGen) # @deprecated, use KaGen::KaGen
 if (KAGEN_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+    add_compile_definitions(KAGEN_TESTS_ENABLED)
 endif ()
 
 if (KAGEN_BUILD_PYTHON)

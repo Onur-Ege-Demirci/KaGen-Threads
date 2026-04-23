@@ -20,12 +20,17 @@ private:
         {std::type_index(typeid(unsigned long long)), MPI_UNSIGNED_LONG_LONG},
         {std::type_index(typeid(long double)), MPI_LONG_DOUBLE}};
 
-        MPI_Datatype getMPIType(const std::type_info& type);
+    MPI_Datatype getMPIType(const std::type_info& type);
 
-        MPI_Datatype getMPIType(std::type_index type);
+    MPI_Datatype getMPIType(std::type_index type);
 
 public:
     MPI_Communicator();
+
+
+    MPI_Communicator(MPI_Comm comm_);
+
+
     ~MPI_Communicator();
 
     void GetWorldRank(int* rank) override;
