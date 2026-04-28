@@ -1,6 +1,8 @@
 #include "kagen/context.h"
 #include "kagen/definitions.h"
 #include "kagen/generators/hyperbolic/hyperbolic.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <gtest/gtest.h>
 
@@ -8,6 +10,17 @@
 #include "tests/geometric/utils.h"
 
 using namespace kagen;
+
+CommInterface* comm;
+
+class HyperbolicTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        comm = new CommInterface(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
+    }
+};
 
 namespace {
 void validate_graph(const Graph& local_graph, const PGeneratorConfig& config) {
@@ -47,7 +60,7 @@ void test_configuration(const SInt n, const double avg_degree, const double plex
     config         = factory.NormalizeParameters(config, rank, size, false);
     auto generator = factory.Create(config, rank, size);
     generator->Generate(GraphRepresentation::EDGE_LIST);
-    generator->Finalize(MPI_COMM_WORLD);
+    generator->Finalize(*comm);
     const auto local_graph = generator->Take();
 
     validate_graph(local_graph, config);

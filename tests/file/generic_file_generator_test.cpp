@@ -1,5 +1,7 @@
 #include "kagen/context.h"
 #include "kagen/generators/file/file_graph.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -23,8 +25,22 @@ const char* GRAPH_WITH_COMMENTS = "tests/data/graphs/with_comments";
 
 using namespace kagen;
 
-struct GenericGeneratorTestFixture
-    : public ::testing::TestWithParam<std::tuple<FileFormat, GraphDistribution, GraphRepresentation>> {};
+
+
+CommInterface* comm;
+class GenericGeneratorTestFixture
+    : public ::testing::TestWithParam<std::tuple<FileFormat, GraphDistribution, GraphRepresentation>> {
+        void SetUp() override {
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            comm = new CommInterface(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
+        }
+    };
+
+
+
+
+
 
 INSTANTIATE_TEST_SUITE_P(
     GenericGeneratorTest, GenericGeneratorTestFixture,
@@ -69,7 +85,7 @@ inline Graph ReadStaticGraph(
 
     FileGraphGenerator generator(config, rank, size);
     generator.Generate(representation);
-    generator.Finalize(MPI_COMM_WORLD);
+    generator.Finalize(*comm);
     return generator.Take();
 }
 
@@ -98,7 +114,7 @@ inline Graph ReadStaticGraphOnRoot(
 
         FileGraphGenerator generator(config, 0, 1);
         generator.Generate(representation);
-        generator.Finalize(MPI_COMM_WORLD);
+        generator.Finalize(*comm);
         return generator.Take();
     } else {
         return {};

@@ -26,7 +26,7 @@ private:
 
 public:
     MPI_Communicator();
-
+    
 
     MPI_Communicator(MPI_Comm comm_);
 

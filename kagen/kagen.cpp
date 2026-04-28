@@ -4,6 +4,7 @@
 #include "kagen/in_memory_facade.h"
 #include "kagen/streaming_facade.h"
 #include "kagen/communicators/communicator.h"
+#include "kagen/communicators/communicator_factory.h"
 
 #include <cmath>
 #include <numeric>
@@ -458,12 +459,18 @@ void Graph::SortEdgelist() {
     }
 }
 
-KaGen::KaGen(CommInterface& comm)
+
+KaGen::KaGen(CommInterface comm)
     : comm_(comm),
       config_(std::make_unique<PGeneratorConfig>()),
       representation_(GraphRepresentation::EDGE_LIST) {
     SetDefaults();
 }
+
+KaGen::KaGen(MPI_Comm mpi_comm)
+    : KaGen(getMPICommInterface(mpi_comm)) {
+}
+
 
 KaGen::KaGen(KaGen&&) noexcept            = default;
 KaGen& KaGen::operator=(KaGen&&) noexcept = default;

@@ -1,5 +1,7 @@
 #include "kagen/context.h"
 #include "kagen/generators/file/file_graph.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -12,7 +14,14 @@
 #include <numeric>
 #include <utility>
 
+CommInterface* comm_;
+
+
+
 using namespace kagen;
+
+
+
 
 using WeightRange   = std::pair<SInt, SInt>;
 using GeneratorFunc = std::function<Graph(KaGen&, SInt, SInt)>;
@@ -31,7 +40,13 @@ MATCHER_P(EqualWeights, graph, "") {
 
 struct ParhipReadWriteTestFixture
     : public ::testing::TestWithParam<std::tuple<std::string, GeneratorFunc, GraphDistribution, GraphRepresentation>> {
-};
+    protected: 
+        void SetUp() override {
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            comm_ = new CommInterface(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
+        }
+    };
 
 INSTANTIATE_TEST_SUITE_P(
     GenericGeneratorTest, ParhipReadWriteTestFixture,
@@ -104,8 +119,8 @@ TEST_P(ParhipReadWriteTestFixture, default_write_read_in_parhip_format) {
     const WeightRange          weight_range{1, 100};
     MPI_Comm                   comm = MPI_COMM_WORLD;
     int                        rank, size;
-    MPI_Comm_rank(comm, &rank);
-    comm.GetSize(&size);
+    comm_-> GetRank(&rank);
+    comm_->GetSize(&size);
 
     // setup
     kagen::KaGen generator(comm);
@@ -116,7 +131,7 @@ TEST_P(ParhipReadWriteTestFixture, default_write_read_in_parhip_format) {
     Graph generated_graph = generate(generator, n, m);
 
     // writer setup
-    GraphInfo         info(generated_graph, comm);
+    GraphInfo         info(generated_graph, *comm_);
     OutputGraphConfig config;
     config.filename = get_file_path(instance_id);
     kagen::ParhipWriter writer(config, generated_graph, info, rank, size);
@@ -145,7 +160,7 @@ TEST_P(ParhipReadWriteTestFixture, write_from_csr_read_in_parhip_format) {
     MPI_Comm                   comm = MPI_COMM_WORLD;
     int                        rank, size;
     MPI_Comm_rank(comm, &rank);
-    comm.GetSize(&size);
+    comm_->GetSize(&size);
 
     // setup
     kagen::KaGen generator(comm);
@@ -156,7 +171,7 @@ TEST_P(ParhipReadWriteTestFixture, write_from_csr_read_in_parhip_format) {
     Graph generated_graph = generate(generator, n, m);
 
     // writer setup
-    GraphInfo         info(generated_graph, comm);
+    GraphInfo         info(generated_graph, *comm_);
     OutputGraphConfig config;
     config.filename = get_file_path(instance_id);
     kagen::ParhipWriter writer(config, generated_graph, info, rank, size);
@@ -187,7 +202,7 @@ TEST_P(ParhipReadWriteTestFixture, write_from_csr_read_in_parhip_format_32bit_ed
     MPI_Comm                   comm = MPI_COMM_WORLD;
     int                        rank, size;
     MPI_Comm_rank(comm, &rank);
-    comm.GetSize(&size);
+    comm_ -> GetSize(&size);
 
     // setup
     kagen::KaGen generator(comm);
@@ -197,7 +212,7 @@ TEST_P(ParhipReadWriteTestFixture, write_from_csr_read_in_parhip_format_32bit_ed
     Graph generated_graph = generate(generator, n, m);
 
     // writer setup
-    GraphInfo         info(generated_graph, comm);
+    GraphInfo         info(generated_graph, *comm_);
     OutputGraphConfig config;
     config.filename     = get_file_path(instance_id);
     config.adjwgt_width = 32;

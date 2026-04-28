@@ -289,8 +289,9 @@ private:
 
 class KaGen {
 public:
-    KaGen(CommInterface&);
-
+    KaGen(CommInterface);
+    KaGen(MPI_Comm);
+    
     KaGen(const KaGen&) = delete;
     KaGen(KaGen&&) noexcept;
 

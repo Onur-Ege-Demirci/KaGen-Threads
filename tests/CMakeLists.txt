@@ -43,66 +43,66 @@ kagen_add_test(test_communicator
     FILES communicators/mpi-mpi_communicator_test.cpp
     CORES 4)
 
-# 
+
 # Path Graph Generator
-# kagen_add_test(test_path_generator
-# FILES path/general_path_generator_test.cpp
-    # CORES 1 2 3 4 8 16)
-# 
+kagen_add_test(test_path_generator
+FILES path/general_path_generator_test.cpp
+    CORES 1 2 3 4 8 16)
+
 # Image Mesh Generator
-# kagen_add_test(test_kargb 
-    # FILES image/kargb_test.cpp 
-    # CORES 1)
-# 
+kagen_add_test(test_kargb 
+    FILES image/kargb_test.cpp 
+    CORES 1)
+
 # File Graph Generator
-# kagen_add_test(test_generic_file_generator
-    # FILES file/generic_file_generator_test.cpp
-    # CORES 1 2 3 4 8 16)
-# 
-# kagen_add_test(test_parhip_reader_writer
-    # FILES file/parhip_reader_writer.cpp
-    # CORES 1 2 3 4 8)
-# 
-# 
+kagen_add_test(test_generic_file_generator
+    FILES file/generic_file_generator_test.cpp
+    CORES 1 2 3 4 8 16)
+
+kagen_add_test(test_parhip_reader_writer
+    FILES file/parhip_reader_writer.cpp
+    CORES 1 2 3 4 8)
+
+
 # Geometric Generator
-# kagen_add_test(test_rgg2d
-        # FILES geometric/rgg2d_test.cpp
-        # CORES 1 2 3 4 5 6)
-# 
-# kagen_add_test(test_rgg3d
-        # FILES geometric/rgg3d_test.cpp
-        # CORES 1 2 3 4 5 6)
-# 
-# kagen_add_test(test_hyperbolic
-        # FILES geometric/hyperbolic_test.cpp
-        # CORES 1 2 3 4 5 6)
-# 
-# kagen_add_test(test_edge_weights
-        # FILES edge_weights/edge_generation_test.cpp
-        # CORES 1 2 4)
-# 
-# kagen_add_test(test_permutation
-        # FILES permutation/permutation_test.cpp
-        # CORES 1 2 4)
-# 
-# kagen_add_test(test_edge_range
-        # FILES edge_range.cpp
-        # CORES 1)
-# 
-# kagen_add_test(test_find_pe_in_range
-        # FILES utils/find_pe_in_range_test.cpp
-        # CORES 1)
-# 
-# kagen_add_test(test_redistribute_edges
-        # FILES postprocessor/redistribute_edges_test.cpp
-        # CORES 1 2 4)
-# 
-# kagen_add_test(test_rmat_distribution
-        # FILES rmat/rmat_distribution_test.cpp
-        # CORES 1 2 4)
-# 
-# kagen_add_test(test_thread_communicator
-        # FILES communicators/mpi-mpi_communicator_test.cpp
-        # CORES 4)
-# 
-    # 
+kagen_add_test(test_rgg2d
+        FILES geometric/rgg2d_test.cpp
+        CORES 1 2 3 4 5 6)
+
+kagen_add_test(test_rgg3d
+        FILES geometric/rgg3d_test.cpp
+        CORES 1 2 3 4 5 6)
+
+kagen_add_test(test_hyperbolic
+        FILES geometric/hyperbolic_test.cpp
+        CORES 1 2 3 4 5 6)
+
+kagen_add_test(test_edge_weights
+        FILES edge_weights/edge_generation_test.cpp
+        CORES 1 2 4)
+
+kagen_add_test(test_permutation
+        FILES permutation/permutation_test.cpp
+        CORES 1 2 4)
+
+kagen_add_test(test_edge_range
+        FILES edge_range.cpp
+        CORES 1)
+
+kagen_add_test(test_find_pe_in_range
+        FILES utils/find_pe_in_range_test.cpp
+        CORES 1)
+
+kagen_add_test(test_redistribute_edges
+        FILES postprocessor/redistribute_edges_test.cpp
+        CORES 1 2 4)
+
+kagen_add_test(test_rmat_distribution
+        FILES rmat/rmat_distribution_test.cpp
+        CORES 1 2 4)
+
+kagen_add_test(test_thread_communicator
+        FILES communicators/mpi-mpi_communicator_test.cpp
+        CORES 4)
+
+    

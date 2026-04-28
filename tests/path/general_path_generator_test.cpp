@@ -1,5 +1,7 @@
 #include "kagen/context.h"
 #include "kagen/generators/path/path_directed.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <gtest/gtest.h>
 
@@ -7,7 +9,19 @@
 
 class PathGeneratorTestFixture : public ::testing::TestWithParam<kagen::SInt> {};
 INSTANTIATE_TEST_SUITE_P(PathGenerationTests, PathGeneratorTestFixture, ::testing::Values(10, 500, 16384, 30001));
+int rank;
+    
+CommInterface* comm; 
+class PathGenerationTests : public ::testing::Test {
+public:
+    
+    void           SetUp() override {
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        comm = new CommInterface(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
+        
+    }
 
+};
 namespace {
 constexpr bool debug_output = false;
 
@@ -70,16 +84,17 @@ void WalkPath(const kagen::Graph& graph, kagen::SInt n) {
 TEST_P(PathGeneratorTestFixture, path_generation_without_permutation) {
     using namespace kagen;
     PEID size, rank;
-
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    comm->GetSize(&size);
+    comm->GetRank(&rank);
+    // MPI_Comm_size(MPI_COMM_WORLD, &size);
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     PGeneratorConfig config;
     config.n = GetParam();
 
     PathDirected generator(config, rank, size);
     generator.Generate(GraphRepresentation::EDGE_LIST);
-    generator.Finalize(MPI_COMM_WORLD);
+    generator.Finalize(*comm);
     const Graph graph = kagen::testing::GatherGraph(generator.Take());
 
     WalkPath(graph, config.n);
@@ -89,8 +104,10 @@ TEST_P(PathGeneratorTestFixture, path_generation_with_permutation) {
     using namespace kagen;
     PEID size, rank;
 
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    comm->GetSize(&size);
+    comm->GetRank(&rank);
+    // MPI_Comm_size(MPI_COMM_WORLD, &size);
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     PGeneratorConfig config;
     config.n       = GetParam();
@@ -98,7 +115,7 @@ TEST_P(PathGeneratorTestFixture, path_generation_with_permutation) {
 
     PathDirected generator(config, rank, size);
     generator.Generate(GraphRepresentation::EDGE_LIST);
-    generator.Finalize(MPI_COMM_WORLD);
+    generator.Finalize(*comm);
     const Graph graph = kagen::testing::GatherGraph(generator.Take());
 
     WalkPath(graph, config.n);

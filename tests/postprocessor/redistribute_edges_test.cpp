@@ -1,5 +1,7 @@
 #include "kagen/kagen.h"
 #include "kagen/tools/postprocessor.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <gtest/gtest.h>
 #include <mpi.h>
@@ -13,8 +15,20 @@
 using namespace kagen;
 
 using GeneratorFunc    = std::function<Graph(KaGen&, SInt, SInt)>;
-using RedistributeFunc = std::function<VertexRange(Edgelist&, Edgelist&, SInt, bool, MPI_Comm)>;
+using RedistributeFunc = std::function<VertexRange(Edgelist&, Edgelist&, SInt, bool, CommInterface&)>;
 
+CommInterface* comm;
+class RedistributeEdgesTest : public ::testing::Test {
+protected:
+    void           SetUp() override {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        comm = new CommInterface(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
+        
+    }
+
+    
+};
 static Graph MakeEdgeListGraph(const Edgelist& edges) {
     Graph g;
     g.representation = GraphRepresentation::EDGE_LIST;
@@ -87,14 +101,15 @@ TEST_P(RedistributeEdgesFixture, PreservesEdgeSet) {
     kagen::KaGen generator(MPI_COMM_WORLD);
     generator.UseEdgeListRepresentation();
     Graph graph = generate(generator, n, m);
-
+    
     Edgelist input        = graph.edges;
     SInt     num_vertices = graph.vertex_range.second;
-    MPI_Allreduce(MPI_IN_PLACE, &num_vertices, 1, KAGEN_MPI_SINT, MPI_MAX, MPI_COMM_WORLD);
+    comm->Allreduce(inplace, &num_vertices, 1, typeid(SInt), CommOp::MAX);
+    // MPI_Allreduce(MPI_IN_PLACE, &num_vertices, 1, KAGEN_MPI_SINT, MPI_MAX, MPI_COMM_WORLD);
 
     Edgelist expected = [&](auto edges) {
         if (remap_round_robin) {
-            RoundRobinRemapping(edges, num_vertices, MPI_COMM_WORLD);
+            RoundRobinRemapping(edges, num_vertices, *comm);
         }
         edges = GatherAllEdges(edges);
         std::sort(edges.begin(), edges.end());
@@ -103,7 +118,7 @@ TEST_P(RedistributeEdgesFixture, PreservesEdgeSet) {
     }(input);
 
     Edgelist redistributed_edges;
-    redistribute(input, redistributed_edges, num_vertices, remap_round_robin, MPI_COMM_WORLD);
+    redistribute(input, redistributed_edges, num_vertices, remap_round_robin, *comm);
 
     Edgelist result = GatherAllEdges(redistributed_edges);
     std::sort(result.begin(), result.end());
@@ -125,10 +140,11 @@ TEST_P(RedistributeEdgesFixture, OwnershipInvariant) {
 
     Edgelist input        = graph.edges;
     SInt     num_vertices = graph.vertex_range.second;
-    MPI_Allreduce(MPI_IN_PLACE, &num_vertices, 1, KAGEN_MPI_SINT, MPI_MAX, MPI_COMM_WORLD);
+    comm->Allreduce(inplace, &num_vertices, 1, typeid(SInt), CommOp::MAX);
+    // MPI_Allreduce(MPI_IN_PLACE, &num_vertices, 1, KAGEN_MPI_SINT, MPI_MAX, MPI_COMM_WORLD);
 
     Edgelist    redistributed_edges;
-    VertexRange vr = redistribute(input, redistributed_edges, num_vertices, remap_round_robin, MPI_COMM_WORLD);
+    VertexRange vr = redistribute(input, redistributed_edges, num_vertices, remap_round_robin, *comm);
 
     for (const auto& edge: redistributed_edges) {
         EXPECT_GE(edge.first, vr.first);
@@ -150,10 +166,11 @@ TEST_P(RedistributeEdgesFixture, NoDuplicatesInOutput) {
 
     Edgelist input        = graph.edges;
     SInt     num_vertices = graph.vertex_range.second;
-    MPI_Allreduce(MPI_IN_PLACE, &num_vertices, 1, KAGEN_MPI_SINT, MPI_MAX, MPI_COMM_WORLD);
+    comm->Allreduce(inplace, &num_vertices, 1, typeid(SInt), CommOp::MAX);
+    // MPI_Allreduce(MPI_IN_PLACE, &num_vertices, 1, KAGEN_MPI_SINT, MPI_MAX, MPI_COMM_WORLD);
 
     Edgelist redistributed_edges;
-    redistribute(input, redistributed_edges, num_vertices, remap_round_robin, MPI_COMM_WORLD);
+    redistribute(input, redistributed_edges, num_vertices, remap_round_robin, *comm);
 
     EXPECT_TRUE(std::is_sorted(redistributed_edges.begin(), redistributed_edges.end()));
     auto dup = std::adjacent_find(redistributed_edges.begin(), redistributed_edges.end());
@@ -186,14 +203,14 @@ TEST_P(RedistributeEdgesSimpleFixture, PreservesEdgeSet_Star) {
 
     Edgelist reference = input;
     if (remap_round_robin) {
-        RoundRobinRemapping(reference, n, MPI_COMM_WORLD);
+        RoundRobinRemapping(reference, n, *comm);
     }
     Edgelist expected = GatherAllEdges(reference);
     std::sort(expected.begin(), expected.end());
     expected.erase(std::unique(expected.begin(), expected.end()), expected.end());
 
     Edgelist redistributed_edges;
-    redistribute(input, redistributed_edges, n, remap_round_robin, MPI_COMM_WORLD);
+    redistribute(input, redistributed_edges, n, remap_round_robin, *comm);
 
     Edgelist result = GatherAllEdges(redistributed_edges);
     std::sort(result.begin(), result.end());
@@ -208,7 +225,7 @@ TEST_P(RedistributeEdgesSimpleFixture, OwnershipInvariant_Star) {
     const SInt  n     = 100;
     Edgelist    input = BuildStarOnPE0(n);
     Edgelist    redistributed_edges;
-    VertexRange vr = redistribute(input, redistributed_edges, n, remap_round_robin, MPI_COMM_WORLD);
+    VertexRange vr = redistribute(input, redistributed_edges, n, remap_round_robin, *comm);
 
     for (const auto& edge: redistributed_edges) {
         EXPECT_GE(edge.first, vr.first);
@@ -224,7 +241,7 @@ TEST_P(RedistributeEdgesSimpleFixture, EmptyInput) {
     Edgelist   input;
     Edgelist   redistributed_edges;
 
-    redistribute(input, redistributed_edges, n, remap_round_robin, MPI_COMM_WORLD);
+    redistribute(input, redistributed_edges, n, remap_round_robin, *comm);
 
     EXPECT_TRUE(redistributed_edges.empty());
 }
@@ -244,13 +261,13 @@ TEST_P(RedistributeEdgesSimpleFixture, SingleEdge) {
 
     Edgelist reference = input;
     if (remap_round_robin) {
-        RoundRobinRemapping(reference, n, MPI_COMM_WORLD);
+        RoundRobinRemapping(reference, n, *comm);
     }
     Edgelist expected = GatherAllEdges(reference);
     std::sort(expected.begin(), expected.end());
 
     Edgelist    redistributed_edges;
-    VertexRange vr = redistribute(input, redistributed_edges, n, remap_round_robin, MPI_COMM_WORLD);
+    VertexRange vr = redistribute(input, redistributed_edges, n, remap_round_robin, *comm);
 
     Edgelist result = GatherAllEdges(redistributed_edges);
     std::sort(result.begin(), result.end());

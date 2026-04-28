@@ -10,17 +10,16 @@
 
 class CommConsistencyTest : public ::testing::Test {
 protected:
-    std::unique_ptr<MPI_Communicator> mpi;
-    std::unique_ptr<Thread_Communicator> thr;
+    CommInterface* mpi;
 
     int rank = 0;
     int size = 1;
 
     void SetUp() override {
-        mpi = new CommInterface(0, std::make_shared<MPI_Communicator>());
+        mpi = new CommInterface(0, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
 
-        mpi->GetWorldRank(&rank);
-        mpi->GetWorldSize(&size);
+        mpi->GetRank(&rank);
+        mpi->GetSize(&size);
 
         thr = std::make_unique<Thread_Communicator>(size);
 
@@ -33,8 +32,8 @@ protected:
 
 TEST_F(CommConsistencyTest, MPI_vs_Thread_AllreduceConsistency) {
     int rank, size;
-    comm->GetWorldRank(&rank);
-    comm->GetWorldSize(&size);
+    mpi->GetRank(&rank);
+    mpi->GetSize(&size);
 
     const int count = 8;
 
@@ -45,9 +44,9 @@ TEST_F(CommConsistencyTest, MPI_vs_Thread_AllreduceConsistency) {
     for (int i = 0; i < count; i++) {
         send[i] = rank + 1;
     }
-
+     
     MPI_Communicator mpi_comm;
-    Thread_Communicator thread_comm(size); // IMPORTANT: match size
+    Thread_Communicator thread_comm(); // IMPORTANT: match size
 
     mpi_comm.Allreduce(
         send.data(),
