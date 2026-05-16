@@ -147,7 +147,6 @@ using std::unordered_map;
     void Thread_Communicator::abort(int code) {
         std::terminate();
     }
-    //TODO_O
     void Thread_Communicator::Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) {
         int    rank      = getCurrentRank();
         size_t elem_size = type_sizes.at(std::type_index(type));

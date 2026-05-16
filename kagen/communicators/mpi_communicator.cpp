@@ -8,12 +8,37 @@
 #include <functional>
 #include <map>
 #include <typeindex>
+#include <execinfo.h>
+#include <unistd.h>
+#include <iostream>
+
+void print_stacktrace() {
+    void* array[50];
+    int size = backtrace(array, 50);
+    char** strings = backtrace_symbols(array, size);
+
+    std::cerr << "Stack trace:\n";
+    for (int i = 0; i < size; i++) {
+        std::cerr << strings[i] << "\n";
+    }
+
+    free(strings);
+}
+
 
 MPI_Datatype MPI_Communicator::getMPIType(const std::type_info& type) {
+    if (table.find(std::type_index(type)) == table.end()) {
+        print_stacktrace();
+        throw std::runtime_error("MPI_Communicator does not support type " + std::string(type.name()));
+    }
     return table.at(std::type_index(type));
 }
 
 MPI_Datatype MPI_Communicator::getMPIType(std::type_index type) {
+    if (table.find(type) == table.end()) {
+        print_stacktrace();
+        throw std::runtime_error("MPI_Communicator does not support type " + std::string(type.name()));
+    }
     return table.at(type);
 }
 
@@ -45,8 +70,9 @@ MPI_Communicator::MPI_Communicator(MPI_Comm comm_) {
 }
 
 MPI_Communicator::~MPI_Communicator() {
-    MPI_Finalize();
+    std::cerr << "MPI_Communicator destructor called, finalizing MPI\n";
 }
+
 void MPI_Communicator::GetWorldRank(int* rank) {
     MPI_Comm_rank(comm, rank);
 }
@@ -81,6 +107,12 @@ void MPI_Communicator::Allgather(
 }
 
 void MPI_Communicator::Allgather(inplace_t, void* recvbuf, int recvcount, const std::type_info& recv_type) {
+    int flag;
+    MPI_Finalized(&flag);
+    if (flag) {
+        print_stacktrace();
+        std::cerr << "MPI_Finalize has already been called, cannot perform Allgather with MPI_IN_PLACE\n" << recv_type.name() << "\n";
+    }
     MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, recvbuf, recvcount, getMPIType(recv_type), comm);
 }
 
@@ -109,13 +141,16 @@ void MPI_Communicator::Exscan(const void* sendbuf, void* recvbuf, int count, con
     MPI_Exscan(sendbuf, recvbuf, count, getMPIType(type), getMPIOp(op), comm);
 }
 void MPI_Communicator::CommitType(std::type_index type, size_t size) {
+    if (table.find(type) != table.end() && table[type] != MPI_DATATYPE_NULL) {
+        return;
+    } 
     MPI_Datatype mpi_type;
     MPI_Type_contiguous(size, MPI_BYTE, &mpi_type);
     MPI_Type_commit(&mpi_type);
     table[type] = mpi_type;
 }
 
-// TODO_O does this even work?
+
 void MPI_Communicator::FreeType(std::type_index type) {
     MPI_Type_free(&table[type]);
     table.erase(type);

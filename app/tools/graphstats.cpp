@@ -5,6 +5,8 @@
 #include "kagen/io.h"
 #include "kagen/kagen.h"
 #include "kagen/tools/utils.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <mpi.h>
 
@@ -193,7 +195,7 @@ private:
 
     Statistics stats_;
 };
-
+std::unique_ptr<CommInterface> comm;
 Statistics ComputeStatistics(const Configuration& stats_config) {
     StatisticsComputator computator(stats_config);
 
@@ -217,7 +219,7 @@ Statistics ComputeStatistics(const Configuration& stats_config) {
     }
 
     if (stats_config.num_chunks == 1) {
-        const Graph graph = FinalizeGraphFragment(std::move(first_fragment), false, MPI_COMM_WORLD);
+        const Graph graph = FinalizeGraphFragment(std::move(first_fragment), false, *comm);
         return computator.Finalize(graph);
     } else {
         return computator.Finalize();
@@ -285,6 +287,9 @@ Configuration parse_cli_arguments(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
+    const PEID rank = GetCommRank(MPI_COMM_WORLD);
+    const PEID size = GetCommSize(MPI_COMM_WORLD);
+    comm = std::make_unique<CommInterface>(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
     if (GetCommSize(MPI_COMM_WORLD) != 1) {
         std::cerr << "must be run with just one MPI process\n";
         return MPI_Finalize();

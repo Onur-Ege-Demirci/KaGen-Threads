@@ -5,6 +5,8 @@
 #include "kagen/tools/postprocessor.h"
 #include "kagen/tools/utils.h"
 #include "kagen/tools/validator.h"
+#include "kagen/communicators/communicator_interface.h"
+#include "kagen/communicators/mpi_communicator.h"
 
 #include <mpi.h>
 
@@ -19,6 +21,7 @@ int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
     const PEID rank = GetCommRank(MPI_COMM_WORLD);
     const PEID size = GetCommSize(MPI_COMM_WORLD);
+    CommInterface comm(rank, std::make_shared<MPI_Communicator>(MPI_COMM_WORLD));
 
     InputGraphConfig config;
 
@@ -86,7 +89,7 @@ int main(int argc, char* argv[]) {
         const auto [from, to] = ComputeRange(n, size, rank);
         graph = reader->Read(from, to, std::numeric_limits<SInt>::max(), GraphRepresentation::EDGE_LIST);
         if (reader->Deficits() & ReaderDeficits::UNKNOWN_NUM_VERTICES) {
-            n = FindNumberOfVerticesInEdgelist(graph.edges, MPI_COMM_WORLD);
+            n = FindNumberOfVerticesInEdgelist(graph.edges, comm);
         }
         if (reader->Deficits() & ReaderDeficits::UNKNOWN_NUM_EDGES) {
             m = graph.edges.size();
@@ -99,7 +102,7 @@ int main(int argc, char* argv[]) {
             }
 
             std::tie(graph.vertex_range.first, graph.vertex_range.second) = ComputeRange(n, size, rank);
-            RedistributeEdgesByVertexRange(graph.edges, graph.vertex_range, MPI_COMM_WORLD);
+            RedistributeEdgesByVertexRange(graph.edges, graph.vertex_range, comm);
         }
     } catch (const IOError& e) {
         if (!quiet) {
@@ -179,9 +182,9 @@ int main(int argc, char* argv[]) {
     }
 
     if (!has_edge_weights && !has_vertex_weights) {
-        has_warned |= !ValidateGraphInplace(graph, allow_self_loops, allow_directed, allow_multi_edges, MPI_COMM_WORLD);
+        has_warned |= !ValidateGraphInplace(graph, allow_self_loops, allow_directed, allow_multi_edges, comm);
     } else {
-        has_warned |= !ValidateGraph(graph, allow_self_loops, allow_directed, allow_multi_edges, MPI_COMM_WORLD);
+        has_warned |= !ValidateGraph(graph, allow_self_loops, allow_directed, allow_multi_edges, comm);
     }
     MPI_Allreduce(MPI_IN_PLACE, &has_warned, 1, MPI_C_BOOL, MPI_LOR, MPI_COMM_WORLD);
 

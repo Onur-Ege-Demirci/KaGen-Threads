@@ -18,7 +18,11 @@ private:
         {std::type_index(typeid(unsigned int)), MPI_UNSIGNED},
         {std::type_index(typeid(long long)), MPI_LONG_LONG},
         {std::type_index(typeid(unsigned long long)), MPI_UNSIGNED_LONG_LONG},
-        {std::type_index(typeid(long double)), MPI_LONG_DOUBLE}};
+        {std::type_index(typeid(long double)), MPI_LONG_DOUBLE},
+        {std::type_index(typeid(uint64_t)), MPI_UINT64_T},
+        {std::type_index(typeid(int64_t)), MPI_INT64_T},
+        {std::type_index(typeid(bool)), MPI_C_BOOL},
+        {std::type_index(typeid(uint8_t)), MPI_BYTE}};
 
     MPI_Datatype getMPIType(const std::type_info& type);
 

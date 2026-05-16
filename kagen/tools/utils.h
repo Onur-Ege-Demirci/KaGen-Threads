@@ -39,6 +39,17 @@ inline PEID GetCommRank(CommInterface& comm) {
     comm.GetRank(&rank);
     return rank;
 }
+inline PEID GetCommRank(MPI_Comm comm) {
+    PEID rank;
+    MPI_Comm_rank(comm, &rank);
+    return rank;
+}
+
+inline PEID GetCommSize(MPI_Comm comm) {
+    PEID size;
+    MPI_Comm_size(comm, &size);
+    return size;
+}
 
 inline PEID GetCommSize(CommInterface& comm) {
     PEID size;

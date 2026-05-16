@@ -177,7 +177,6 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
     //MPI_Type_commit(&sint_pair);
 
     Edgelist recv_bufs(recv_displs.back() + recv_counts.back());
-    //TODO_O ponder
     comm_.CommitType(std::type_index(typeid(std::pair<SInt, SInt>)), sizeof(std::pair<SInt, SInt>));
     comm_.AlltoallV(
         send_bufs.data(), send_counts.data(), send_displs.data(), typeid(std::pair<SInt, SInt>), recv_bufs.data(),
