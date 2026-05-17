@@ -70,6 +70,7 @@ MPI_Communicator::MPI_Communicator(MPI_Comm comm_) {
 }
 
 MPI_Communicator::~MPI_Communicator() {
+    print_stacktrace();
     std::cerr << "MPI_Communicator destructor called, finalizing MPI\n";
 }
 
