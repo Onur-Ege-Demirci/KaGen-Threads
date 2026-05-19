@@ -26,20 +26,37 @@ void print_stacktrace() {
 }
 
 
+
+const std::unordered_map<std::type_index, MPI_Datatype> MPI_Communicator::builtin_types = {
+        {std::type_index(typeid(int)), MPI_INT},
+        {std::type_index(typeid(double)), MPI_DOUBLE},
+        {std::type_index(typeid(unsigned int)), MPI_UNSIGNED},
+        {std::type_index(typeid(long long)), MPI_LONG_LONG},
+        {std::type_index(typeid(unsigned long long)), MPI_UNSIGNED_LONG_LONG},
+        {std::type_index(typeid(long double)), MPI_LONG_DOUBLE},
+        {std::type_index(typeid(uint64_t)), MPI_UINT64_T},
+        {std::type_index(typeid(int64_t)), MPI_INT64_T},
+        {std::type_index(typeid(bool)), MPI_C_BOOL},
+        {std::type_index(typeid(uint8_t)), MPI_BYTE}
+    };
+
+
+
 MPI_Datatype MPI_Communicator::getMPIType(const std::type_info& type) {
-    if (table.find(std::type_index(type)) == table.end()) {
-        print_stacktrace();
-        throw std::runtime_error("MPI_Communicator does not support type " + std::string(type.name()));
-    }
-    return table.at(std::type_index(type));
+    return getMPIType(std::type_index(type));
+    
 }
 
 MPI_Datatype MPI_Communicator::getMPIType(std::type_index type) {
-    if (table.find(type) == table.end()) {
-        print_stacktrace();
-        throw std::runtime_error("MPI_Communicator does not support type " + std::string(type.name()));
+    if (builtin_types.contains(type)) {
+        return builtin_types.at(type);
+        
     }
-    return table.at(type);
+    else if(dynamic_types.contains(type)){
+        return dynamic_types.at(type);
+    }
+    throw std::runtime_error("MPI_Communicator does not support type " + std::string(type.name()));
+    print_stacktrace();
 }
 
 static MPI_Op getMPIOp(CommOp op) {
@@ -70,6 +87,10 @@ MPI_Communicator::MPI_Communicator(MPI_Comm comm_) {
 }
 
 MPI_Communicator::~MPI_Communicator() {
+    //TODO_O this feels super sus.
+    for(auto& [key, value] : dynamic_types) {
+        FreeType(key);
+    }
     print_stacktrace();
     std::cerr << "MPI_Communicator destructor called, finalizing MPI\n";
 }
@@ -142,7 +163,7 @@ void MPI_Communicator::Exscan(const void* sendbuf, void* recvbuf, int count, con
     MPI_Exscan(sendbuf, recvbuf, count, getMPIType(type), getMPIOp(op), comm);
 }
 void MPI_Communicator::CommitType(std::type_index type, size_t size) {
-    if (table.find(type) != table.end() && table[type] != MPI_DATATYPE_NULL) {
+    if (dynamic_types.contains(type) && dynamic_types[type] != MPI_DATATYPE_NULL) {
         return;
     } 
     MPI_Datatype mpi_type;
@@ -153,8 +174,8 @@ void MPI_Communicator::CommitType(std::type_index type, size_t size) {
 
 
 void MPI_Communicator::FreeType(std::type_index type) {
-    MPI_Type_free(&table[type]);
-    table.erase(type);
+    MPI_Type_free(&dynamic_types[type]);
+    dynamic_types.erase(type);
 }
 
 double MPI_Communicator::getTime() {

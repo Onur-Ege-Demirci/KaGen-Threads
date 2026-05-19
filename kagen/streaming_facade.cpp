@@ -181,7 +181,7 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
     comm_.AlltoallV(
         send_bufs.data(), send_counts.data(), send_displs.data(), typeid(std::pair<SInt, SInt>), recv_bufs.data(),
         recv_counts.data(), recv_displs.data(), typeid(std::pair<SInt, SInt>));
-    comm_.FreeType(std::type_index(typeid(std::pair<SInt, SInt>)));
+    //comm_.FreeType(std::type_index(typeid(std::pair<SInt, SInt>)));
     /*MPI_Alltoallv(
         send_bufs.data(), send_counts.data(), send_displs.data(), sint_pair, recv_bufs.data(), recv_counts.data(),
         recv_displs.data(), sint_pair, comm_);

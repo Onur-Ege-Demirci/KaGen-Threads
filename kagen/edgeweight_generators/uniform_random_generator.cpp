@@ -118,7 +118,7 @@ void GenerateEdgeWeightsImpl(
     //TODO_O possible issue?
     comm_.CommitType(std::type_index(typeid(EdgeData)), sizeof(EdgeData));
     auto recv_buf = ExchangeMessageBuffers(message_buffers, typeid(EdgeData), comm_);
-    comm_.FreeType(std::type_index(typeid(EdgeData)));
+    //comm_.FreeType(std::type_index(typeid(EdgeData)));
    /* MPI_Datatype edgedata_mpi_type;
     MPI_Type_contiguous(sizeof(EdgeData), MPI_BYTE, &edgedata_mpi_type);
     MPI_Type_commit(&edgedata_mpi_type);
