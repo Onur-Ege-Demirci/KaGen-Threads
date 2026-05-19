@@ -169,7 +169,7 @@ void MPI_Communicator::CommitType(std::type_index type, size_t size) {
     MPI_Datatype mpi_type;
     MPI_Type_contiguous(size, MPI_BYTE, &mpi_type);
     MPI_Type_commit(&mpi_type);
-    table[type] = mpi_type;
+    dynamic_types[type] = mpi_type;
 }
 
 

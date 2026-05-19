@@ -24,7 +24,9 @@ using std::unordered_map;
 // to implement the communication operations. The number of threads can be increased during runtime. Decreasing isn't
 // supported yet.
 
-    
+
+
+//TODO_O unsigned int support floating point support
     template <typename T>
     std::function<void(T*, const T*, size_t)> Thread_Communicator::getOp(CommOp op) {
         switch (op) {

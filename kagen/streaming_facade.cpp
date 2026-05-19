@@ -173,7 +173,7 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
 
     //MPI_Datatype sint_pair = MPI_DATATYPE_NULL;
-   // MPI_Type_contiguous(2, KAGEN_MPI_SINT, &sint_pair);
+    //MPI_Type_contiguous(2, KAGEN_MPI_SINT, &sint_pair);
     //MPI_Type_commit(&sint_pair);
 
     Edgelist recv_bufs(recv_displs.back() + recv_counts.back());
