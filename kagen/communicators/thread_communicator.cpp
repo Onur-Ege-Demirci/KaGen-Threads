@@ -1,5 +1,4 @@
 #include "kagen/definitions.h"
-#include "kagen/kagen.h"
 #include "kagen/communicators/thread_communicator.h"
 
 #include "communicator.h"
@@ -127,7 +126,7 @@ using std::unordered_map;
         return rank;
     }
 
-    void Thread_Communicator::GetWorldRank(int* rank) {
+    void Thread_Communicator::GetWorldRank(int* rank) const {
         auto thread_id = std::this_thread::get_id();
         *rank          = thread_id_to_rank[thread_id];
     }
@@ -137,14 +136,14 @@ using std::unordered_map;
         }
         flush_buffer();
     }
-    void Thread_Communicator::GetWorldSize(int* size) {
+    void Thread_Communicator::GetWorldSize(int* size) const {
         *size = threads.size();
     }
-    void Thread_Communicator::barrier() {
+    void Thread_Communicator::barrier() const {
         static std::barrier b(threads.size());
         b.arrive_and_wait();
     }
-    void Thread_Communicator::abort(int code) {
+    void Thread_Communicator::abort(int code) const {
         std::terminate();
     }
     void Thread_Communicator::Reduce(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op, int root) {

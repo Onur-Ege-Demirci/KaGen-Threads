@@ -104,15 +104,19 @@ void StreamingGenerator::Initialize() {
                 std::cout << "." << std::flush;
             }
         }
-        
-        comm_.Allreduce(inplace, &max_nonlocal_edges, 1, typeid(SInt), CommOp::MAX);
-        comm_.Allreduce(inplace, &num_nonlocal_edges, 1, typeid(SInt), CommOp::SUM);
-        comm_.Allreduce(inplace, &num_local_edges, 1, typeid(SInt), CommOp::SUM);
-        comm_.Allreduce(inplace, &max_local_edges, 1, typeid(SInt), CommOp::MAX);
+        comm_.Allreduce(inplace, std::span<SInt>(&max_nonlocal_edges, 1), CommOp::MAX);
+        comm_.Allreduce(inplace, std::span<SInt>(&num_nonlocal_edges, 1), CommOp::SUM);
+        comm_.Allreduce(inplace, std::span<SInt>(&num_local_edges, 1), CommOp::SUM);
+        comm_.Allreduce(inplace, std::span<SInt>(&max_local_edges, 1), CommOp::MAX);
+        //comm_.Allreduce(inplace, &max_nonlocal_edges, 1, typeid(SInt), CommOp::MAX);
+        //comm_.Allreduce(inplace, &num_nonlocal_edges, 1, typeid(SInt), CommOp::SUM);
+        //comm_.Allreduce(inplace, &num_local_edges, 1, typeid(SInt), CommOp::SUM);
+        //comm_.Allreduce(inplace, &max_local_edges, 1, typeid(SInt), CommOp::MAX);
     
 
         vertex_distribution_[rank_]     = my_vertex_ranges_.front().first;
         vertex_distribution_[rank_ + 1] = my_vertex_ranges_.back().second;
+        
         comm_.Allgather(inplace, vertex_distribution_.data() + 1, 1, typeid(SInt));
 
         if (rank_ == ROOT && !config_.quiet) {

@@ -289,7 +289,7 @@ private:
 
 class KaGen {
 public:
-    KaGen(CommInterface);
+    KaGen(const CommInterface& comm);
     KaGen(MPI_Comm);
     
     KaGen(const KaGen&) = delete;

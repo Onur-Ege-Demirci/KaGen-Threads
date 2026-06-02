@@ -49,19 +49,19 @@ std::vector<SInt> GatherNumberOfEdges(const Edgelist& edges, CommInterface& comm
 
 SInt ReduceSum(const SInt value, CommInterface& comm) {
     SInt sum = 0;
-    comm.Reduce(&value, &sum, 1, typeid(SInt), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(&value, 1), std::span<SInt>(&sum, 1), CommOp::SUM, ROOT);
     return sum;
 }
 
 SInt ReduceMin(const SInt value, CommInterface& comm) {
     SInt min = 0;
-    comm.Reduce(&value, &min, 1, typeid(SInt), CommOp::MIN, ROOT);
+    comm.Reduce(std::span<const SInt>(&value, 1), std::span<SInt>(&min, 1), CommOp::MIN, ROOT);
     return min;
 }
 
 LPFloat ReduceMean(const SInt value, CommInterface& comm) {
     SInt sum = 0;
-    comm.Reduce(&value, &sum, 1, typeid(SInt), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(&value, 1), std::span<SInt>(&sum, 1), CommOp::SUM, ROOT);
 
     PEID size;
     comm.GetSize(&size);
@@ -71,7 +71,7 @@ LPFloat ReduceMean(const SInt value, CommInterface& comm) {
 
 SInt ReduceMax(const SInt value, CommInterface& comm) {
     SInt max = 0;
-    comm.Reduce(&value, &max, 1, typeid(SInt), CommOp::MAX, ROOT);
+    comm.Reduce(std::span<const SInt>(&value, 1), std::span<SInt>(&max, 1), CommOp::MAX, ROOT);
     return max;
 }
 
@@ -121,9 +121,14 @@ DegreeStatistics ReduceDegreeStatistics(const Edgelist& edges, const SInt global
     update(cur_degree);
 
     SInt global_min = 0, global_sum = 0, global_max = 0;
-    comm.Reduce(&min, &global_min, 1, typeid(SInt), CommOp::MIN, ROOT);
-    comm.Reduce(&sum, &global_sum, 1, typeid(SInt), CommOp::SUM, ROOT);
-    comm.Reduce(&max, &global_max, 1, typeid(SInt), CommOp::MAX, ROOT);
+
+    comm.Reduce(std::span<const SInt>(&min,1), std::span<SInt>(&global_min, 1), CommOp::MIN, ROOT);
+    comm.Reduce(std::span<const SInt>(&sum,1), std::span<SInt>(&global_sum, 1), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(&max,1), std::span<SInt>(&global_max, 1), CommOp::MAX, ROOT);
+    
+    //comm.Reduce(&min, &global_min, 1, typeid(SInt), CommOp::MIN, ROOT);
+    //comm.Reduce(&sum, &global_sum, 1, typeid(SInt), CommOp::SUM, ROOT);
+    //comm.Reduce(&max, &global_max, 1, typeid(SInt), CommOp::MAX, ROOT);
 
     PEID size = 0;
     comm.GetSize(&size);
@@ -132,7 +137,7 @@ DegreeStatistics ReduceDegreeStatistics(const Edgelist& edges, const SInt global
 }
 
 std::vector<SInt> ComputeDegreeBins(const Edgelist& edges, const VertexRange vertex_range, CommInterface& comm) {
-    assert(std::is_sorted(edges.begin(), edges.end()));
+    assert(std::is_sorted(edges.begin(), edges.end()));  
 
     std::vector<SInt> bins(std::numeric_limits<SInt>::digits);
     SInt              cur_from   = edges.empty() ? 0 : std::get<0>(edges.front());
@@ -162,7 +167,8 @@ std::vector<SInt> ComputeDegreeBins(const Edgelist& edges, const VertexRange ver
     }
 
     std::vector<SInt> global_bins(bins.size());
-    comm.Reduce(bins.data(), global_bins.data(), bins.size(), typeid(SInt), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(bins.data(), bins.size()), std::span<SInt>(global_bins.data(), global_bins.size()), CommOp::SUM, ROOT);
+    //comm.Reduce(bins.data(), global_bins.data(), bins.size(), typeid(SInt), CommOp::SUM, ROOT);
     return global_bins;
 }
 
@@ -174,9 +180,10 @@ double ComputeEdgeLocality(const Edgelist& edges, const VertexRange vertex_range
 
     SInt num_global_cut_edges = 0;
     SInt num_global_edges     = 0;
-
-    comm.Reduce(&num_local_cut_edges, &num_global_cut_edges, 1, typeid(SInt), CommOp::SUM, ROOT);
-    comm.Reduce(&num_local_edges, &num_global_edges, 1, typeid(SInt), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(&num_local_cut_edges, 1), std::span<SInt>(&num_global_cut_edges, 1), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(&num_local_edges, 1), std::span<SInt>(&num_global_edges, 1), CommOp::SUM, ROOT);
+    //comm.Reduce(&num_local_cut_edges, &num_global_cut_edges, 1, typeid(SInt), CommOp::SUM, ROOT);
+    //comm.Reduce(&num_local_edges, &num_global_edges, 1, typeid(SInt), CommOp::SUM, ROOT);
 
     return 1.0 - DivideOrDefault(static_cast<double>(num_global_cut_edges), static_cast<double>(num_global_edges), 0.0);
 }
@@ -192,7 +199,8 @@ SInt ComputeNumberOfGhostNodes(const Edgelist& edges, const VertexRange vertex_r
 
     const SInt num_local_ghost_nodes  = ghost_nodes.size();
     SInt       num_global_ghost_nodes = 0;
-    comm.Reduce(&num_local_ghost_nodes, &num_global_ghost_nodes, 1, typeid(SInt), CommOp::SUM, ROOT);
+    comm.Reduce(std::span<const SInt>(&num_local_ghost_nodes, 1), std::span<SInt>(&num_global_ghost_nodes, 1), CommOp::SUM, ROOT);
+    //comm.Reduce(&num_local_ghost_nodes, &num_global_ghost_nodes, 1, typeid(SInt), CommOp::SUM, ROOT);
     return num_global_ghost_nodes;
 }
 

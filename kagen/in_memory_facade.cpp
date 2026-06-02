@@ -1,5 +1,6 @@
 #include "kagen/in_memory_facade.h"
 
+#include "kagen/communicators/communicator.h"
 #include "kagen/context.h"
 #include "kagen/definitions.h"
 #include "kagen/factories.h"
@@ -7,27 +8,19 @@
 #include "kagen/io.h"
 #include "kagen/tools/statistics.h"
 #include "kagen/tools/validator.h"
-#include "kagen/communicators/communicator.h"
 
-
-
+#include <chrono>
 #include <cmath>
+#include <functional>
 #include <iomanip>
 #include <iostream>
-#include <chrono>
-#include <functional>
 namespace kagen {
-
-
-
-
-
 
 void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface& comm) {
     PEID size, rank;
     comm.GetSize(&size);
     comm.GetRank(&rank);
-    
+
     auto graph = GenerateInMemory(config, GraphRepresentation::EDGE_LIST, comm);
 
     const auto t_start_io = std::chrono::steady_clock::now();
@@ -51,17 +44,15 @@ void GenerateInMemoryToDisk(PGeneratorConfig config, CommInterface& comm) {
     }
 
     const auto t_end_io = std::chrono::steady_clock::now();
-    
 
     if (!config.quiet && rank == ROOT) {
         std::chrono::duration<double> elapsed = t_end_io - t_start_io;
-        std::cout << "IO took " << std::fixed << std::setprecision(3) << elapsed.count() << " seconds"
-                  << std::endl;
+        std::cout << "IO took " << std::fixed << std::setprecision(3) << elapsed.count() << " seconds" << std::endl;
     }
 }
 
-Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentation representation, CommInterface& comm) {
-
+Graph GenerateInMemory(
+    const PGeneratorConfig& config_template, GraphRepresentation representation, CommInterface& comm) {
     PEID size, rank;
     comm.GetSize(&size);
     comm.GetRank(&rank);
@@ -87,7 +78,6 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
     if (output_info) {
         std::cout << "Generating graph ... " << std::flush;
     }
-
 
     const auto t_start_graphgen = comm.getTime();
 
@@ -125,8 +115,14 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
 
     if (!config.skip_postprocessing && !config.quiet) {
         SInt num_global_edges_before, num_global_edges_after;
-        comm.Reduce(&num_edges_before_finalize, &num_global_edges_before, 1, typeid(SInt) ,CommOp::SUM, ROOT);
-        comm.Reduce(&num_edges_after_finalize, &num_global_edges_after, 1, typeid(SInt) ,CommOp::SUM, ROOT);
+
+        comm.Reduce(
+            std::span<const SInt>(&num_edges_before_finalize, 1), std::span<SInt>(&num_global_edges_before, 1),
+            CommOp::SUM, ROOT);
+
+        comm.Reduce(
+            std::span<const SInt>(&num_edges_after_finalize, 1), std::span<SInt>(&num_global_edges_after, 1),
+            CommOp::SUM, ROOT);
 
         if (num_global_edges_before != num_global_edges_after && output_info) {
             std::cout << "The number of edges changed from " << num_global_edges_before << " to "
@@ -148,9 +144,10 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
         if (output_info) {
             std::cout << "Validating graph ... " << std::flush;
         }
-        
+
         bool success = ValidateGraph(graph, config.self_loops, config.directed, false, comm);
-        comm.Allreduce(inplace, &success, 1, typeid(bool), CommOp::LOR);
+        comm.Allreduce(inplace, std::span<bool>(&success, 1), CommOp::LOR);
+        //comm.Allreduce(inplace, &success, 1, typeid(bool), CommOp::LOR);
         if (!success) {
             if (output_error) {
                 std::cerr << "Error: graph validation failed\n";
@@ -160,7 +157,6 @@ Graph GenerateInMemory(const PGeneratorConfig& config_template, GraphRepresentat
             std::cout << "OK" << std::endl;
         }
     }
-
 
     // Statistics
     if (!config.quiet) {
