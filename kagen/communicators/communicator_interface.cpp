@@ -7,11 +7,11 @@
 
 
 
-CommInterface::CommInterface(int rank, const MPI_Communicator& comm) {
+CommInterface::CommInterface(int rank, MPI_Communicator& comm) {
     this->rank = rank;
     this->comm = &comm;
 }
-CommInterface::CommInterface(int rank, const Thread_Communicator& comm) {
+CommInterface::CommInterface(int rank, Thread_Communicator& comm) {
     this->rank = rank;
     this->comm = &comm;
 }

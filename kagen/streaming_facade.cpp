@@ -117,7 +117,7 @@ void StreamingGenerator::Initialize() {
         vertex_distribution_[rank_]     = my_vertex_ranges_.front().first;
         vertex_distribution_[rank_ + 1] = my_vertex_ranges_.back().second;
         
-        comm_.Allgather(inplace, vertex_distribution_.data() + 1, 1, typeid(SInt));
+        //TODO_O comm_.Allgather(inplace, vertex_distribution_.data() + 1, 1, typeid(SInt));
 
         if (rank_ == ROOT && !config_.quiet) {
             std::cout << std::endl;
@@ -173,7 +173,8 @@ void StreamingGenerator::ExchangeNonlocalEdges() {
 
     std::vector<int> recv_counts(size_);
     std::vector<int> recv_displs(size_);
-    comm_.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
+    comm_.Alltoall(std::span<const int>(send_counts.data(), 1), std::span<int>(recv_counts.data(), 1));
+    //comm_.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
 
     //MPI_Datatype sint_pair = MPI_DATATYPE_NULL;

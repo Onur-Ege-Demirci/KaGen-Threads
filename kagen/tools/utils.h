@@ -30,7 +30,8 @@ inline SInt FindNumberOfVerticesInEdgelist(const Edgelist& edges, CommInterface&
     for (const auto& [u, v]: edges) {
         n = std::max(n, std::max(u, v));
     }
-    comm.Allreduce(inplace, &n, 1, typeid(SInt), CommOp::MAX);
+    comm.Allreduce(inplace, std::span<SInt>(&n, 1), CommOp::MAX);
+    //comm.Allreduce(inplace, &n, 1, typeid(SInt), CommOp::MAX);
     return n + 1;
 }
 
@@ -114,7 +115,7 @@ inline std::vector<VertexRange> AllgatherVertexRange(const VertexRange vertex_ra
 
 template <typename T>
 std::vector<T> ExchangeMessageBuffers(
-    std::unordered_map<PEID, std::vector<T>> message_buffers, const std::type_info& datatype, CommInterface& comm) {
+    std::unordered_map<PEID, std::vector<T>> message_buffers, CommInterface& comm) {
     PEID rank, size;
     comm.GetRank(&rank);
     comm.GetSize(&size);
@@ -130,7 +131,8 @@ std::vector<T> ExchangeMessageBuffers(
 
     std::exclusive_scan(send_counts.begin(), send_counts.end(), send_displs.begin(), 0);
     const std::size_t total_send_count = send_displs.back() + send_counts.back();
-    comm.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
+    comm.Alltoall(std::span<const int>(send_counts.data(), 1), std::span<int>(recv_counts.data(), 1));
+    //comm.Alltoall(send_counts.data(), 1, typeid(int), recv_counts.data(), 1, typeid(int));
     //MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT, comm);
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(), recv_displs.begin(), 0);
     const std::size_t total_recv_count = recv_displs.back() + recv_counts.back();
@@ -144,9 +146,14 @@ std::vector<T> ExchangeMessageBuffers(
     }
     recv_buf.resize(total_recv_count);
     comm.AlltoallV(
+        std::span<const T>(send_buf.data(), send_buf.size()), std::span<T>(recv_buf.data(), recv_buf.size()),
+        std::span<const int>(send_counts.data(), send_counts.size()), std::span<const int>(send_displs.data(), send_displs.size()),
+        std::span<int>(recv_counts.data(), recv_counts.size()), std::span<int>(recv_displs.data(), recv_displs.size()));
+
+    /*comm.AlltoallV(
         send_buf.data(), send_counts.data(), send_displs.data(), datatype, recv_buf.data(), recv_counts.data(),
         recv_displs.data(), datatype);
-    //TODO_O variable mpi datatype oh dear.
+    */
     //MPI_Alltoallv(
        // send_buf.data(), send_counts.data(), send_displs.data(), mpi_datatype, recv_buf.data(), recv_counts.data(),
         //recv_displs.data(), mpi_datatype, comm);

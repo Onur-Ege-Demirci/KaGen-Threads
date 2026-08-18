@@ -250,6 +250,24 @@ add_library(KaGen::cKaGen ALIAS KaGen) # @deprecated, use KaGen::KaGen
 
 ################################################################################
 
+
+
+###############################################################################
+# kamping_types
+###############################################################################
+include(FetchContent)
+FetchContent_Declare(
+    kamping
+    GIT_REPOSITORY https://github.com/kamping-site/kamping.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(kamping)
+
+# Link only to the type module, not the full KaMPIng library
+target_link_libraries(KaGen PRIVATE $<BUILD_INTERFACE:kamping::types>)
+
+
+
 if (KAGEN_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

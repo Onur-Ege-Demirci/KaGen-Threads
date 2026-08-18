@@ -9,7 +9,7 @@ class CommInterface {
 private:
     int                                                               rank;
     CommType                                                          type;
-    std::variant<const MPI_Communicator*, const Thread_Communicator*> comm;
+    std::variant<MPI_Communicator*, Thread_Communicator*> comm;
 
     template <typename Fn>
 
@@ -18,8 +18,8 @@ private:
     }
     // TODO_O change to raw pointers and let caller handle lifetime-
 public:
-    CommInterface(int rank, const Thread_Communicator& comm);
-    CommInterface(int rank, const MPI_Communicator& comm);
+    CommInterface(int rank, Thread_Communicator& comm);
+    CommInterface(int rank, MPI_Communicator& comm);
     void GetRank(int*);
     void GetSize(int*);
     void barrier();
@@ -76,12 +76,14 @@ public:
         dispatch([&](auto& c) { c.AlltoallV(sendbuf, sendcounts, sdispls, recvbuf, recvcounts, rdispls); });
     }
 
+    template <typename T>
+    void Exscan(std::span<const T> sendbuf, std::span<T> recvbuf, CommOp op) {
+        dispatch([&](auto& c) { c.Exscan(sendbuf, recvbuf, op); });
+    }
     void   GetWorldRank(int* rank);
     double getTime();
-
-    // TODO_O
-    void Exscan(const void* sendbuf, void* recvbuf, int count, const std::type_info& type, CommOp op);
-    void CommitType(std::type_index type, size_t size);
-    void FreeType(std::type_index type);
     void abort(int code);
+
+    // TODO_O ask (noted in mpi_communicator.h) about typing here: can I call on these types using the normal machinery?
+    void CommitType(std::type_index type, size_t size);
 };
